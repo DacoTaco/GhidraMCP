@@ -1,3 +1,14 @@
+> [!IMPORTANT]
+> This repository is no longer the primary maintained version of GhidraMCP.
+>
+> Active development has moved to [bethington/ghidra-mcp](https://github.com/bethington/ghidra-mcp).
+> Please use that repository for the latest releases, Ghidra 12.x support, DebuggerService,
+> EmulationService, bug fixes, and ongoing development.
+>
+> This fork is kept available for historical reference and to preserve the transition work.
+> Thanks to everyone who used, tested, and contributed to this fork.
+
+
 [![MseeP.ai Security Assessment Badge](https://mseep.net/mseep-audited.png)](https://mseep.ai/app/lauriewired-ghidramcp)
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
