@@ -1,4 +1,4 @@
-name: Build with Maven
+name: Build with Gradle
 
 on:
   push:
@@ -10,17 +10,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      GHIDRA_VERSION: 11.3.2
-      GHIDRA_DATE: 20250415
-      GHIDRA_LIBS: >-
-        Features/Base/lib/Base.jar
-        Features/Decompiler/lib/Decompiler.jar
-        Framework/Docking/lib/Docking.jar
-        Framework/Generic/lib/Generic.jar
-        Framework/Project/lib/Project.jar
-        Framework/SoftwareModeling/lib/SoftwareModeling.jar
-        Framework/Utility/lib/Utility.jar
-        Framework/Gui/lib/Gui.jar
+      GHIDRA_VERSION: 12.0
+      GHIDRA_DATE: 20251205
 
     steps:
     - uses: actions/checkout@v4
@@ -29,33 +20,40 @@ jobs:
       with:
         java-version: '21'
         distribution: 'temurin'
-        cache: maven
+        cache: gradle
 
     - name: Download Ghidra
       run: |
         wget --no-verbose -O ghidra.zip https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_${{ env.GHIDRA_VERSION }}_build/ghidra_${{ env.GHIDRA_VERSION }}_PUBLIC_${{ env.GHIDRA_DATE }}.zip
         7z x -bd ghidra.zip
 
-    - name: Copy Ghidra libs
-      run: |
-        mkdir -p ./lib
-        for libfile in ${{ env.GHIDRA_LIBS }}
-          do echo "Copying ${libfile} to lib/"
-          cp ghidra_${{ env.GHIDRA_VERSION }}_PUBLIC/Ghidra/${libfile} ./lib/
-        done
+    - name: Set GHIDRA_INSTALL_DIR
+      run: echo "GHIDRA_INSTALL_DIR=$PWD/ghidra_${{ env.GHIDRA_VERSION }}_PUBLIC/Ghidra" >> $GITHUB_ENV
 
-    - name: Build with Maven
-      run: mvn clean package assembly:single
+    - name: Install Gradle (via sdkman)
+      run: |
+        curl -s "https://get.sdkman.io" | bash
+        source "$HOME/.sdkman/bin/sdkman-init.sh"
+        sdk install gradle 8.6.2
+
+    - name: Build with Gradle
+      run: |
+        echo "Using GHIDRA_INSTALL_DIR=$GHIDRA_INSTALL_DIR"
+        gradle -PGHIDRA_INSTALL_DIR="$GHIDRA_INSTALL_DIR" clean build
 
     - name: Assemble release directory
       run: |
-        mkdir release
-        cp target/GhidraMCP-*-SNAPSHOT.zip release/
+        mkdir -p release
+        zipfile=$(find . -type f -name '*.zip' | head -n1)
+        if [ -z "$zipfile" ]; then
+          echo "No zip artifact found"
+          exit 1
+        fi
+        cp "$zipfile" release/
         cp bridge_mcp_ghidra.py release/
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: GhidraMCP-artifact
-        path: |
-          release/*
+        path: release/*
