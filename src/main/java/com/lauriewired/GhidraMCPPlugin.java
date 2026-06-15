@@ -1,6 +1,7 @@
 package com.lauriewired;
 
 import com.lauriewired.handlers.Handler;
+import ghidra.framework.main.ApplicationLevelPlugin;
 import ghidra.framework.plugintool.Plugin;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.app.plugin.PluginCategoryNames;
@@ -63,10 +64,16 @@ import java.util.*;
  * @see com.sun.net.httpserver.HttpServer
  */
 @PluginInfo(status = PluginStatus.RELEASED, packageName = ghidra.app.DeveloperPluginPackage.NAME, category = PluginCategoryNames.ANALYSIS, shortDescription = "HTTP server plugin", description = "Starts an embedded HTTP server to expose program data. Port configurable via Tool Options.")
-public class GhidraMCPPlugin extends Plugin {
+public class GhidraMCPPlugin extends Plugin implements ApplicationLevelPlugin {
 
-	/** The embedded HTTP server instance that handles all API requests */
-	private HttpServer server;
+	/** Shared embedded HTTP server instance for the whole Ghidra process */
+	private static HttpServer headlessServer;
+
+	/** Lock for starting/stopping shared server */
+	private static final Object SHARED_LOCK = new Object();
+
+	/** Reference count of plugin instances using the shared server */
+	private static int instanceCount = 0;
 
 	/** Configuration category name for tool options */
 	private static final String OPTION_CATEGORY_NAME = "GhidraMCP HTTP Server";
@@ -91,6 +98,9 @@ public class GhidraMCPPlugin extends Plugin {
 
 	/** HashMap to store all registered API routes */
 	private static final HashMap<String, Handler> routes = new HashMap<>();
+
+	/** Shared MCP server manager */
+	private static com.lauriewired.mcp.GhidraMcpServer sharedMcpServer;
 
 	/** The timeout for decompilation requests in seconds */
 	private int decompileTimeout;
@@ -117,8 +127,7 @@ public class GhidraMCPPlugin extends Plugin {
 	 */
 	public GhidraMCPPlugin(PluginTool tool) {
 		super(tool);
-		Msg.info(this, "GhidraMCPPlugin loading...");
-
+		
 		// Register the configuration option
 		Options options = tool.getOptions(OPTION_CATEGORY_NAME);
 		options.registerOption(ADDRESS_OPTION_NAME, DEFAULT_ADDRESS,
@@ -134,12 +143,26 @@ public class GhidraMCPPlugin extends Plugin {
 				"Decompilation timeout. " +
 						"Requires Ghidra restart or plugin reload to take effect after changing.");
 
+		instanceCount++;
+	}
+
+	@Override
+	protected void init() {
+		super.init();
+
 		try {
-			startServer();
+			startHeadlessServer();
 		} catch (IOException e) {
-			Msg.error(this, "Failed to start HTTP server", e);
+			Msg.error(this, "Failed to start shared HTTP server", e);
 		}
-		Msg.info(this, "GhidraMCPPlugin loaded!");
+
+		synchronized (SHARED_LOCK) {
+			if (sharedMcpServer == null) {
+				sharedMcpServer = new com.lauriewired.mcp.GhidraMcpServer();
+				sharedMcpServer.start();
+				Msg.info(GhidraMCPPlugin.class, "Shared MCP server started");
+			}
+		}
 	}
 
 	/**
@@ -187,65 +210,63 @@ public class GhidraMCPPlugin extends Plugin {
 	 * @see #sendResponse(HttpExchange, String)
 	 * @see #parseQueryParams(HttpExchange)
 	 */
-	private void startServer() throws IOException {
-		// Read the configured port
-		Options options = tool.getOptions(OPTION_CATEGORY_NAME);
-		String listenAddress = options.getString(ADDRESS_OPTION_NAME, DEFAULT_ADDRESS);
-		int port = options.getInt(PORT_OPTION_NAME, DEFAULT_PORT);
+	private void startHeadlessServer() throws IOException {
+		synchronized (SHARED_LOCK) {
+			
+			if (headlessServer != null) {
+				return;
+			}
 
-		// Stop existing server if running (e.g., if plugin is reloaded)
-		if (server != null) {
-			Msg.info(this, "Stopping existing HTTP server before starting new one.");
-			server.stop(0);
-			server = null;
-		}
+			Msg.info(this, "GhidraMCPPlugin Headless API loading...");
+			Options options = getTool().getOptions(OPTION_CATEGORY_NAME);
+			String listenAddress = options.getString(ADDRESS_OPTION_NAME, DEFAULT_ADDRESS);
+			int port = options.getInt(PORT_OPTION_NAME, DEFAULT_PORT);
 
-		InetSocketAddress inetAddress = new InetSocketAddress(listenAddress, port);
+			InetSocketAddress inetAddress = new InetSocketAddress(listenAddress, port);
+			if (inetAddress.isUnresolved()) {
+				Msg.error(GhidraMCPPlugin.class, "Failed to resolve listen address.");
+				return;
+			}
 
-		if (inetAddress.isUnresolved()) {
-			Msg.error(this, "Failed to resolve listen address.");
-			return;
-		}
+			headlessServer = HttpServer.create(inetAddress, 0);
 
-		server = HttpServer.create(inetAddress, 0);
-
-		Reflections reflections = new Reflections("com.lauriewired.handlers");
-		Set<Class<? extends Handler>> subclasses = reflections.getSubTypesOf(Handler.class);
-		for (Class<?> clazz : subclasses) {
-			System.out.println(clazz.getName());
-			try {
-				Constructor<?> constructor = clazz.getConstructor(PluginTool.class);
-				Handler handler = (Handler) constructor.newInstance(tool);
-				if (routes.containsKey(handler.getPath())) {
-					Msg.error(this, "Handler class " + clazz.getName() + " already registered, skipped.");
-					continue;
-				}
-				routes.put(handler.getPath(), handler);
-				server.createContext(handler.getPath(), exchange -> {
-					try {
-						handler.handle(exchange);
-					} catch (Exception e) {
-						throw new RuntimeException(e);
+			Reflections reflections = new Reflections("com.lauriewired.handlers");
+			Set<Class<? extends Handler>> subclasses = reflections.getSubTypesOf(Handler.class);
+			for (Class<?> clazz : subclasses) {
+				try {
+					Constructor<?> constructor = clazz.getConstructor(PluginTool.class);
+					Handler handler = (Handler) constructor.newInstance(tool);
+					if (routes.containsKey(handler.getPath())) {
+						Msg.info(GhidraMCPPlugin.class, "Handler class " + clazz.getName() + " already registered, skipped.");
+						continue;
 					}
-				});
-			} catch (NoSuchMethodException e) {
-				Msg.error(this, "Handler class " + clazz.getName() +
-						" doesn't have constructor xxx(PluginTool tool), skipped.");
-			} catch (Exception e) {
-				e.printStackTrace();
+					routes.put(handler.getPath(), handler);
+					headlessServer.createContext(handler.getPath(), exchange -> {
+						try {
+							handler.handle(exchange);
+						} catch (Exception e) {
+							throw new RuntimeException(e);
+						}
+					});
+				} catch (NoSuchMethodException e) {
+					Msg.error(GhidraMCPPlugin.class, "Handler class " + clazz.getName() +
+							" doesn't have constructor xxx(PluginTool tool), skipped.");
+				} catch (Exception e) {
+					Msg.error(GhidraMCPPlugin.class, "Error initializing handler " + clazz.getName(), e);
+				}
 			}
-		}
 
-		server.setExecutor(null);
-		new Thread(() -> {
-			try {
-				server.start();
-				Msg.info(this, "GhidraMCP HTTP server started on port " + port);
-			} catch (Exception e) {
-				Msg.error(this, "Failed to start HTTP server on port " + port + ". Port might be in use.", e);
-				server = null; // Ensure server isn't considered running
-			}
-		}, "GhidraMCP-HTTP-Server").start();
+			headlessServer.setExecutor(null);
+			new Thread(() -> {
+				try {
+					headlessServer.start();
+					Msg.info(GhidraMCPPlugin.class, "GhidraMCP HTTP headless server started on port " + port);
+				} catch (Exception e) {
+					Msg.error(GhidraMCPPlugin.class, "Failed to start headless HTTP server on port " + port + ". Port might be in use.", e);
+					headlessServer = null; // Ensure server isn't considered running
+				}
+			}, "GhidraMCP-HTTP-Server").start();
+		}
 	}
 
 	/**
@@ -275,11 +296,35 @@ public class GhidraMCPPlugin extends Plugin {
 	 */
 	@Override
 	public void dispose() {
-		if (server != null) {
-			Msg.info(this, "Stopping GhidraMCP HTTP server...");
-			server.stop(1); // Stop with a small delay (e.g., 1 second) for connections to finish
-			server = null; // Nullify the reference
-			Msg.info(this, "GhidraMCP HTTP server stopped.");
+		if (headlessServer != null) 
+		{
+			try {
+				headlessServer.stop(1);
+			}
+			catch (Exception e) {
+				Msg.error(this, "Failed to stop HTTP server", e);
+			}
+			headlessServer = null;
+		}
+
+		synchronized (SHARED_LOCK) {	
+			instanceCount--;
+			if(instanceCount <= 0)
+			{
+				instanceCount = 0;
+				if (sharedMcpServer != null) {
+					Msg.info(this, "Stopping shared MCP server...");
+					try {
+						sharedMcpServer.stop();
+					} catch (Exception e) {
+						Msg.error(this, "Error stopping shared MCP server", e);
+					}
+					sharedMcpServer = null;
+					Msg.info(this, "Shared MCP server stopped.");
+				}
+			}
+
+			Msg.info(this, "GhidraMCPPlugin disposed; remaining instances: " + instanceCount);
 		}
 		super.dispose();
 	}
