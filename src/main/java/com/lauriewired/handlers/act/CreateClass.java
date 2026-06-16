@@ -27,7 +27,6 @@ import static com.lauriewired.util.GhidraUtils.*;
 import static com.lauriewired.util.ParseUtils.*;
 import static com.lauriewired.util.StructUtils.StructMember;
 import ghidra.program.model.data.CategoryPath;
-import static ghidra.program.util.GhidraProgramUtilities.getCurrentProgram;
 
 /**
  * Handler for creating a new C++ class in Ghidra.
@@ -57,26 +56,28 @@ public final class CreateClass extends Handler {
 		String name = params.get("name");
 		String parentNamespace = params.get("parent_namespace");
 		String membersJson = params.get("members");
+		String programName = params.get("program");
 
 		if (name == null || name.isEmpty()) {
 			sendResponse(exchange, "Error: Class name is required");
 			return;
 		}
 
-		String response = createClassInGhidra(name, parentNamespace, membersJson);
+		String response = createClassInGhidra(programName, name, parentNamespace, membersJson);
 		sendResponse(exchange, response);
 	}
 
 	/**
 	 * Creates a C++ class in Ghidra with the specified parameters.
 	 *
+	 * @param programName The name of the program containing the class.
 	 * @param name The name of the class to create.
 	 * @param parentNamespace The parent namespace (null for global).
 	 * @param membersJson JSON string representing class members.
 	 * @return A status message indicating success or failure.
 	 */
-	private String createClassInGhidra(String name, String parentNamespace, String membersJson) {
-		Program program = getCurrentProgram(tool);
+	private String createClassInGhidra(String programName, String name, String parentNamespace, String membersJson) {
+		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
 

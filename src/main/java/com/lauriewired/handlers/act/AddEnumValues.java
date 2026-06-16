@@ -19,7 +19,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import static com.lauriewired.util.ParseUtils.*;
 import static com.lauriewired.util.EnumUtils.EnumValue;
 import ghidra.program.model.data.CategoryPath;
-import static ghidra.program.util.GhidraProgramUtilities.getCurrentProgram;
 
 /**
  * Handler for adding values to an enum in Ghidra.
@@ -53,12 +52,13 @@ public final class AddEnumValues extends Handler {
 		String enumName = params.get("enum_name");
 		String category = params.get("category");
 		String valuesJson = params.get("values");
+		String programName = params.get("program");
 
 		if (enumName == null || valuesJson == null) {
 			sendResponse(exchange, "enum_name and values are required");
 			return;
 		}
-		sendResponse(exchange, addEnumValues(enumName, category, valuesJson));
+		sendResponse(exchange, addEnumValues(programName, enumName, category, valuesJson));
 	}
 
 	/**
@@ -69,8 +69,8 @@ public final class AddEnumValues extends Handler {
 	 * @param valuesJson JSON array of values to add.
 	 * @return A message indicating success or failure.
 	 */
-	private String addEnumValues(String enumName, String category, String valuesJson) {
-		Program program = getCurrentProgram(tool);
+	private String addEnumValues(String programName, String enumName, String category, String valuesJson) {
+		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
 

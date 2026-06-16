@@ -1,12 +1,11 @@
 package com.lauriewired;
 
 import com.lauriewired.handlers.Handler;
-import ghidra.framework.main.ApplicationLevelPlugin;
-import ghidra.framework.plugintool.Plugin;
-import ghidra.framework.plugintool.PluginTool;
 import ghidra.app.plugin.PluginCategoryNames;
-import ghidra.framework.plugintool.PluginInfo;
+import ghidra.framework.main.ApplicationLevelPlugin;
+import ghidra.framework.plugintool.*;
 import ghidra.framework.plugintool.util.PluginStatus;
+import ghidra.framework.model.*;
 import ghidra.util.Msg;
 import ghidra.framework.options.Options;
 
@@ -63,7 +62,13 @@ import java.util.*;
  * @see ghidra.framework.plugintool.Plugin
  * @see com.sun.net.httpserver.HttpServer
  */
-@PluginInfo(status = PluginStatus.RELEASED, packageName = ghidra.app.DeveloperPluginPackage.NAME, category = PluginCategoryNames.ANALYSIS, shortDescription = "HTTP server plugin", description = "Starts an embedded HTTP server to expose program data. Port configurable via Tool Options.")
+@PluginInfo(
+	status = PluginStatus.RELEASED, 
+	packageName = ghidra.app.DeveloperPluginPackage.NAME, 
+	category = PluginCategoryNames.ANALYSIS, 
+	shortDescription = "HTTP server plugin", 
+	description = "Starts an embedded HTTP server to expose program data. Port configurable via Tool Options."
+	)
 public class GhidraMCPPlugin extends Plugin implements ApplicationLevelPlugin {
 
 	/** Shared embedded HTTP server instance for the whole Ghidra process */
@@ -153,7 +158,7 @@ public class GhidraMCPPlugin extends Plugin implements ApplicationLevelPlugin {
 		try {
 			startHeadlessServer();
 		} catch (IOException e) {
-			Msg.error(this, "Failed to start shared HTTP server", e);
+			Msg.error(GhidraMCPPlugin.class, "Failed to start shared HTTP server", e);
 		}
 
 		synchronized (SHARED_LOCK) {
@@ -217,7 +222,7 @@ public class GhidraMCPPlugin extends Plugin implements ApplicationLevelPlugin {
 				return;
 			}
 
-			Msg.info(this, "GhidraMCPPlugin Headless API loading...");
+			Msg.info(GhidraMCPPlugin.class, "GhidraMCPPlugin Headless API loading...");
 			Options options = getTool().getOptions(OPTION_CATEGORY_NAME);
 			String listenAddress = options.getString(ADDRESS_OPTION_NAME, DEFAULT_ADDRESS);
 			int port = options.getInt(PORT_OPTION_NAME, DEFAULT_PORT);
@@ -296,35 +301,34 @@ public class GhidraMCPPlugin extends Plugin implements ApplicationLevelPlugin {
 	 */
 	@Override
 	public void dispose() {
-		if (headlessServer != null) 
-		{
-			try {
-				headlessServer.stop(1);
-			}
-			catch (Exception e) {
-				Msg.error(this, "Failed to stop HTTP server", e);
-			}
-			headlessServer = null;
-		}
-
 		synchronized (SHARED_LOCK) {	
 			instanceCount--;
+
 			if(instanceCount <= 0)
 			{
 				instanceCount = 0;
+				if (headlessServer != null) 
+				{
+					try {
+						headlessServer.stop(1);
+					}
+					catch (Exception e) {
+						Msg.error(GhidraMCPPlugin.class, "Failed to stop HTTP server", e);
+					}
+					headlessServer = null;
+				}
+
 				if (sharedMcpServer != null) {
-					Msg.info(this, "Stopping shared MCP server...");
+					Msg.info(GhidraMCPPlugin.class, "Stopping shared MCP server...");
 					try {
 						sharedMcpServer.stop();
 					} catch (Exception e) {
-						Msg.error(this, "Error stopping shared MCP server", e);
+						Msg.error(GhidraMCPPlugin.class, "Error stopping shared MCP server", e);
 					}
 					sharedMcpServer = null;
-					Msg.info(this, "Shared MCP server stopped.");
+					Msg.info(GhidraMCPPlugin.class, "Shared MCP server stopped.");
 				}
 			}
-
-			Msg.info(this, "GhidraMCPPlugin disposed; remaining instances: " + instanceCount);
 		}
 		super.dispose();
 	}

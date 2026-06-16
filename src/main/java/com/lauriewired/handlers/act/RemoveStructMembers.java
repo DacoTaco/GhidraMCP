@@ -19,7 +19,6 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static com.lauriewired.util.ParseUtils.*;
 import ghidra.program.model.data.CategoryPath;
-import static ghidra.program.util.GhidraProgramUtilities.getCurrentProgram;
 
 /**
  * Handler for removing members from a structure in Ghidra.
@@ -50,12 +49,13 @@ public final class RemoveStructMembers extends Handler {
 		String structName = params.get("struct_name");
 		String category = params.get("category");
 		String membersParam = params.get("members");
+		String programName = params.get("program");
 
 		if (structName == null || membersParam == null) {
 			sendResponse(exchange, "struct_name and members are required");
 			return;
 		}
-		sendResponse(exchange, removeStructMembers(structName, category, membersParam));
+		sendResponse(exchange, removeStructMembers(structName, category, membersParam, programName));
 	}
 
 	/**
@@ -66,8 +66,8 @@ public final class RemoveStructMembers extends Handler {
 	 * @param membersParam JSON array of member names to remove, or single member name.
 	 * @return A message indicating success or failure.
 	 */
-	private String removeStructMembers(String structName, String category, String membersParam) {
-		Program program = getCurrentProgram(tool);
+	private String removeStructMembers(String structName, String category, String membersParam, String programName) {
+		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
 

@@ -21,7 +21,6 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static com.lauriewired.util.GhidraUtils.resolveDataType;
 import static com.lauriewired.util.ParseUtils.*;
-import static ghidra.program.util.GhidraProgramUtilities.getCurrentProgram;
 
 /**
  * Handler for setting the data type of a global variable or data at a specific address.
@@ -57,6 +56,7 @@ public final class SetGlobalDataType extends Handler {
 		String dataTypeName = params.get("data_type");
 		String lengthStr = params.get("length");
 		String clearModeStr = params.get("clear_mode");
+		String programName = params.get("program");
 
 		if (addressStr == null || addressStr.isEmpty()) {
 			sendResponse(exchange, "Error: address parameter is required");
@@ -81,7 +81,7 @@ public final class SetGlobalDataType extends Handler {
 		responseMsg.append(" using clear mode ").append(clearMode).append("\n\n");
 
 		// Attempt to find the data type
-		Program program = getCurrentProgram(tool);
+		Program program = getProgramByName(programName);
 		if (program != null) {
 			DataTypeManager dtm = program.getDataTypeManager();
 			DataType dataType = resolveDataType(tool, dtm, dataTypeName);
@@ -93,7 +93,7 @@ public final class SetGlobalDataType extends Handler {
 		}
 
 		// Try to set the data type
-		String result = setGlobalDataType(addressStr, dataTypeName, length, clearMode);
+		String result = setGlobalDataType(addressStr, dataTypeName, length, clearMode, programName);
 		responseMsg.append("\nResult: ").append(result);
 
 		sendResponse(exchange, responseMsg.toString());
@@ -108,8 +108,8 @@ public final class SetGlobalDataType extends Handler {
 	 * @param clearMode The clearing mode to use when conflicting data exists.
 	 * @return A message indicating success or failure of the operation.
 	 */
-	private String setGlobalDataType(String addressStr, String dataTypeName, int length, ClearDataMode clearMode) {
-		Program program = getCurrentProgram(tool);
+	private String setGlobalDataType(String addressStr, String dataTypeName, int length, ClearDataMode clearMode, String programName) {
+		Program program = getProgramByName(programName);
 		if (program == null) {
 			return "No program loaded";
 		}

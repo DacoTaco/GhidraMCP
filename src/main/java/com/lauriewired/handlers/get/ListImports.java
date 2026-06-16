@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.Map;
 
 import static com.lauriewired.util.ParseUtils.*;
-import static ghidra.program.util.GhidraProgramUtilities.getCurrentProgram;
 
 /**
  * Handler for listing all external symbols (imports) in the current program.
@@ -42,7 +41,8 @@ public final class ListImports extends Handler {
 		Map<String, String> qparams = parseQueryParams(exchange);
 		int offset = parseIntOrDefault(qparams.get("offset"), 0);
 		int limit = parseIntOrDefault(qparams.get("limit"), 100);
-		sendResponse(exchange, listImports(offset, limit));
+		String programName = qparams.get("program");
+		sendResponse(exchange, listImports(offset, limit, programName));
 	}
 
 	/**
@@ -52,8 +52,8 @@ public final class ListImports extends Handler {
 	 * @param limit  the maximum number of results to return.
 	 * @return a string containing the paginated list of imports.
 	 */
-	private String listImports(int offset, int limit) {
-		Program program = getCurrentProgram(tool);
+	private String listImports(int offset, int limit, String programName) {
+		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
 

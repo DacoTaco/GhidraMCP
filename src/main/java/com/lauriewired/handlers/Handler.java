@@ -2,6 +2,10 @@ package com.lauriewired.handlers;
 
 import com.sun.net.httpserver.HttpExchange;
 import ghidra.framework.plugintool.PluginTool;
+import ghidra.program.model.listing.Program;
+import ghidra.framework.model.*;
+
+import com.lauriewired.util.GhidraUtils;
 
 /**
  * Abstract class representing a handler for HTTP requests in a Ghidra
@@ -45,4 +49,8 @@ public abstract class Handler {
 	 * @throws Exception if an error occurs while handling the request
 	 */
 	public abstract void handle(HttpExchange exchange) throws Exception;
+
+	public Program getProgramByName(String programName) {
+		return GhidraUtils.getProgramByName(tool, programName);
+    }
 }

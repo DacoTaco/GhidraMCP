@@ -19,7 +19,6 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static com.lauriewired.util.ParseUtils.parsePostParams;
 import static com.lauriewired.util.ParseUtils.sendResponse;
-import static ghidra.program.util.GhidraProgramUtilities.getCurrentProgram;
 
 /**
  * Handler for writing bytes to a specific memory address in the current program.
@@ -48,12 +47,14 @@ public final class SetBytes extends Handler {
         String addressStr = params.get("address");
         String bytesStr = params.get("bytes");
 
+        String programName = params.get("program");
+
         if (addressStr == null || bytesStr == null) {
             sendResponse(exchange, "Missing 'address' or 'bytes' parameter");
             return;
         }
 
-        String result = writeBytesToAddress(addressStr, bytesStr);
+        String result = writeBytesToAddress(addressStr, bytesStr, programName);
         sendResponse(exchange, result);
     }
 
@@ -64,8 +65,8 @@ public final class SetBytes extends Handler {
      * @param bytesStr   the string of bytes in hex (e.g., "90 90 90")
      * @return a message indicating the result of the operation
      */
-    private String writeBytesToAddress(String addressStr, String bytesStr) {
-        Program program = getCurrentProgram(tool);
+    private String writeBytesToAddress(String addressStr, String bytesStr, String programName) {
+        Program program = getProgramByName(programName);
         if (program == null)
             return "No active program";
 

@@ -11,7 +11,6 @@ import java.io.IOException;
 import java.util.*;
 
 import static com.lauriewired.util.ParseUtils.*;
-import static ghidra.program.util.GhidraProgramUtilities.getCurrentProgram;
 
 /**
  * Handler to retrieve data associated with a specific label in the current
@@ -38,7 +37,8 @@ public final class GetDataByLabel extends Handler {
 	public void handle(HttpExchange exchange) throws IOException {
 		Map<String, String> qparams = parseQueryParams(exchange);
 		String label = qparams.get("label");
-		sendResponse(exchange, getDataByLabel(label));
+		String programName = qparams.get("program");
+		sendResponse(exchange, getDataByLabel(label, programName));
 	}
 
 	/**
@@ -50,8 +50,8 @@ public final class GetDataByLabel extends Handler {
 	 *         or an error message if the label is not found or no program is
 	 *         loaded.
 	 */
-	private String getDataByLabel(String label) {
-		Program program = getCurrentProgram(tool);
+	private String getDataByLabel(String label, String programName) {
+		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
 		if (label == null || label.isEmpty())

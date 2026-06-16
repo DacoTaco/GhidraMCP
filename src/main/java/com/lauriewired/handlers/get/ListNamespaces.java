@@ -12,7 +12,6 @@ import java.io.IOException;
 import java.util.*;
 
 import static com.lauriewired.util.ParseUtils.*;
-import static ghidra.program.util.GhidraProgramUtilities.getCurrentProgram;
 
 /**
  * Handler for listing namespaces in the current program.
@@ -41,7 +40,7 @@ public final class ListNamespaces extends Handler {
 		Map<String, String> qparams = parseQueryParams(exchange);
 		int offset = parseIntOrDefault(qparams.get("offset"), 0);
 		int limit = parseIntOrDefault(qparams.get("limit"), 100);
-		sendResponse(exchange, listNamespaces(offset, limit));
+		sendResponse(exchange, listNamespaces(qparams.get("program"), offset, limit));
 	}
 
 	/**
@@ -51,8 +50,8 @@ public final class ListNamespaces extends Handler {
 	 * @param limit  the maximum number of namespaces to return
 	 * @return a string representation of the paginated list of namespaces
 	 */
-	private String listNamespaces(int offset, int limit) {
-		Program program = getCurrentProgram(tool);
+	private String listNamespaces(String programName, int offset, int limit) {
+		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
 

@@ -9,9 +9,10 @@ import ghidra.program.model.listing.Program;
 import ghidra.program.util.ProgramLocation;
 
 import java.io.IOException;
+import java.util.*;
 
 import static com.lauriewired.util.ParseUtils.sendResponse;
-import static ghidra.program.util.GhidraProgramUtilities.getCurrentProgram;
+import static com.lauriewired.util.ParseUtils.parseQueryParams;
 
 /**
  * Handler to get the current function in Ghidra GUI.
@@ -35,7 +36,9 @@ public final class GetCurrentFunction extends Handler {
 	 */
 	@Override
 	public void handle(HttpExchange exchange) throws IOException {
-		sendResponse(exchange, getCurrentFunction());
+		Map<String, String> qparams = parseQueryParams(exchange);
+		String programName = qparams.get("program");
+		sendResponse(exchange, getCurrentFunction(programName));
 	}
 
 	/**
@@ -44,7 +47,7 @@ public final class GetCurrentFunction extends Handler {
 	 * @return A string containing the function name, entry point, and signature,
 	 *         or an error message if no function is found or if there are issues.
 	 */
-	private String getCurrentFunction() {
+	private String getCurrentFunction(String programName) {
 		CodeViewerService service = tool.getService(CodeViewerService.class);
 		if (service == null)
 			return "Code viewer service not available";
@@ -53,7 +56,7 @@ public final class GetCurrentFunction extends Handler {
 		if (location == null)
 			return "No current location";
 
-		Program program = getCurrentProgram(tool);
+		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
 

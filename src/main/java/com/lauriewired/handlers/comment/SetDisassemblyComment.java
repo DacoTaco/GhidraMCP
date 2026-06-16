@@ -37,7 +37,8 @@ public final class SetDisassemblyComment extends Handler {
 		Map<String, String> params = parsePostParams(exchange);
 		String address = params.get("address");
 		String comment = params.get("comment");
-		boolean success = setDisassemblyComment(address, comment);
+		String programName = params.get("program");
+		boolean success = setDisassemblyComment(programName, address, comment);
 		sendResponse(exchange, success ? "Comment set successfully" : "Failed to set comment");
 	}
 
@@ -48,7 +49,7 @@ public final class SetDisassemblyComment extends Handler {
 	 * @param comment    the comment to set
 	 * @return true if the comment was set successfully, false otherwise
 	 */
-	private boolean setDisassemblyComment(String addressStr, String comment) {
-		return setCommentAtAddress(tool, addressStr, comment, CommentType.EOL, "Set disassembly comment");
+	private boolean setDisassemblyComment(String programName, String addressStr, String comment) {
+		return setCommentAtAddress(tool, programName, addressStr, comment, CommentType.EOL, "Set disassembly comment");
 	}
 }

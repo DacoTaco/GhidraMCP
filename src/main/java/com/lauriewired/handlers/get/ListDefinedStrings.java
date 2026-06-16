@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.Map;
 
 import static com.lauriewired.util.ParseUtils.*;
-import static ghidra.program.util.GhidraProgramUtilities.getCurrentProgram;
 
 /**
  * Handler to list all defined strings in the current program
@@ -41,7 +40,8 @@ public final class ListDefinedStrings extends Handler {
 		int offset = parseIntOrDefault(qparams.get("offset"), 0);
 		int limit = parseIntOrDefault(qparams.get("limit"), 100);
 		String filter = qparams.get("filter");
-		sendResponse(exchange, listDefinedStrings(offset, limit, filter));
+		String programName = qparams.get("program");
+		sendResponse(exchange, listDefinedStrings(offset, limit, filter, programName));
 	}
 
 	/**
@@ -52,8 +52,8 @@ public final class ListDefinedStrings extends Handler {
 	 * @param filter optional filter to apply to string values
 	 * @return a formatted string containing the list of defined strings
 	 */
-	private String listDefinedStrings(int offset, int limit, String filter) {
-		Program program = getCurrentProgram(tool);
+	private String listDefinedStrings(int offset, int limit, String filter, String programName) {
+		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
 

@@ -19,7 +19,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import static com.lauriewired.util.ParseUtils.*;
 import static com.lauriewired.util.EnumUtils.EnumValue;
 import ghidra.program.model.data.CategoryPath;
-import static ghidra.program.util.GhidraProgramUtilities.getCurrentProgram;
 
 /**
  * Handler for creating a new enum in Ghidra.
@@ -49,12 +48,13 @@ public final class CreateEnum extends Handler {
 		String category = params.get("category");
 		long size = parseIntOrDefault(params.get("size"), 4); // Default to 4 bytes (int size)
 		String valuesJson = params.get("values"); // Optional
+		String programName = params.get("program");
 
 		if (name == null || name.isEmpty()) {
 			sendResponse(exchange, "Enum name is required");
 			return;
 		}
-		sendResponse(exchange, createEnum(name, category, (int) size, valuesJson));
+		sendResponse(exchange, createEnum(name, category, (int) size, valuesJson, programName));
 	}
 
 	/**
@@ -67,8 +67,8 @@ public final class CreateEnum extends Handler {
 	 * @param valuesJson  JSON array of enum values (optional).
 	 * @return A message indicating success or failure of the operation.
 	 */
-	private String createEnum(String name, String category, int size, String valuesJson) {
-		Program program = getCurrentProgram(tool);
+	private String createEnum(String name, String category, int size, String valuesJson, String programName) {
+		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
 

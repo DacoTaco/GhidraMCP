@@ -26,7 +26,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.lauriewired.util.ParseUtils.parsePostParams;
 import static com.lauriewired.util.ParseUtils.sendResponse;
-import static ghidra.program.util.GhidraProgramUtilities.getCurrentProgram;
 
 /**
  * Handler for renaming a variable in a function.
@@ -55,7 +54,8 @@ public final class RenameVariable extends Handler {
 		String functionName = params.get("functionName");
 		String oldName = params.get("oldName");
 		String newName = params.get("newName");
-		String result = renameVariableInFunction(functionName, oldName, newName);
+		String programName = params.get("program");
+		String result = renameVariableInFunction(functionName, oldName, newName, programName);
 		sendResponse(exchange, result);
 	}
 
@@ -67,8 +67,8 @@ public final class RenameVariable extends Handler {
 	 * @param newVarName   the new name for the variable
 	 * @return a message indicating success or failure
 	 */
-	private String renameVariableInFunction(String functionName, String oldVarName, String newVarName) {
-		Program program = getCurrentProgram(tool);
+	private String renameVariableInFunction(String functionName, String oldVarName, String newVarName, String programName) {
+		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
 

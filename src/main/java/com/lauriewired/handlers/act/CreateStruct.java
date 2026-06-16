@@ -21,7 +21,6 @@ import static com.lauriewired.util.GhidraUtils.*;
 import static com.lauriewired.util.ParseUtils.*;
 import static com.lauriewired.util.StructUtils.StructMember;
 import ghidra.program.model.data.CategoryPath;
-import static ghidra.program.util.GhidraProgramUtilities.getCurrentProgram;
 
 /**
  * Handler for creating a new struct in Ghidra.
@@ -51,12 +50,13 @@ public final class CreateStruct extends Handler {
 		String category = params.get("category");
 		long size = parseIntOrDefault(params.get("size"), 0);
 		String membersJson = params.get("members"); // Optional
+		String programName = params.get("program");
 
 		if (name == null || name.isEmpty()) {
 			sendResponse(exchange, "Struct name is required");
 			return;
 		}
-		sendResponse(exchange, createStruct(name, category, (int) size, membersJson));
+		sendResponse(exchange, createStruct(name, category, (int) size, membersJson, programName));
 	}
 
 	/**
@@ -69,8 +69,8 @@ public final class CreateStruct extends Handler {
 	 * @param membersJson JSON array of struct members (optional).
 	 * @return A message indicating success or failure of the operation.
 	 */
-	private String createStruct(String name, String category, int size, String membersJson) {
-		Program program = getCurrentProgram(tool);
+	private String createStruct(String name, String category, int size, String membersJson, String programName) {
+		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
 

@@ -11,7 +11,6 @@ import java.util.Map;
 
 import static com.lauriewired.util.ParseUtils.parseQueryParams;
 import static com.lauriewired.util.ParseUtils.sendResponse;
-import static ghidra.program.util.GhidraProgramUtilities.getCurrentProgram;
 
 /**
  * Handler for disassembling a function at a given address in Ghidra
@@ -39,7 +38,8 @@ public final class DisassembleFunction extends Handler {
 	public void handle(HttpExchange exchange) throws IOException {
 		Map<String, String> qparams = parseQueryParams(exchange);
 		String address = qparams.get("address");
-		sendResponse(exchange, disassembleFunction(address));
+		String programName = qparams.get("program");
+		sendResponse(exchange, disassembleFunction(address, programName));
 	}
 
 	/**
@@ -49,8 +49,8 @@ public final class DisassembleFunction extends Handler {
 	 * @param addressStr the address of the function to disassemble
 	 * @return a string containing the disassembled function code
 	 */
-	private String disassembleFunction(String addressStr) {
-		Program program = getCurrentProgram(tool);
+	private String disassembleFunction(String addressStr, String programName) {
+		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
 		if (addressStr == null || addressStr.isEmpty())

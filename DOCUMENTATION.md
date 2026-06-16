@@ -97,7 +97,6 @@ The `Doxyfile` contains all configuration options:
 ### Core Plugin Methods
 - `GhidraMCPPlugin()` - Constructor and server initialization
 - `startServer()` - HTTP server setup and endpoint registration
-- `getCurrentProgram()` - Access to active Ghidra program
 - `dispose()` - Clean shutdown and resource cleanup
 
 ### Function Analysis

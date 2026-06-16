@@ -7,9 +7,9 @@ import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Program;
 
 import java.io.IOException;
+import java.util.*;
 
-import static com.lauriewired.util.ParseUtils.sendResponse;
-import static ghidra.program.util.GhidraProgramUtilities.getCurrentProgram;
+import static com.lauriewired.util.ParseUtils.*;
 
 /**
  * Handler to list all functions in the current program.
@@ -33,7 +33,9 @@ public final class ListFunctions extends Handler {
 	 */
 	@Override
 	public void handle(HttpExchange exchange) throws IOException {
-		sendResponse(exchange, listFunctions());
+		Map<String, String> qparams = parseQueryParams(exchange);
+		String programName = qparams.get("program");
+		sendResponse(exchange, listFunctions(programName));
 	}
 
 	/**
@@ -41,10 +43,10 @@ public final class ListFunctions extends Handler {
 	 *
 	 * @return a string containing the names and entry points of all functions
 	 */
-	private String listFunctions() {
-		Program program = getCurrentProgram(tool);
+	private String listFunctions(String programName) {
+		Program program = getProgramByName(programName);
 		if (program == null)
-			return "No program loaded";
+			return "No program loaded - " + programName + " was not found";
 
 		StringBuilder result = new StringBuilder();
 		for (Function func : program.getFunctionManager().getFunctions(true)) {

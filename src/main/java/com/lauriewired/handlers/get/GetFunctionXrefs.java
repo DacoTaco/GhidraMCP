@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.Map;
 
 import static com.lauriewired.util.ParseUtils.*;
-import static ghidra.program.util.GhidraProgramUtilities.getCurrentProgram;
 
 /**
  * Handler to get all references to a specific function by name.
@@ -40,7 +39,8 @@ public final class GetFunctionXrefs extends Handler {
 		String name = qparams.get("name");
 		int offset = parseIntOrDefault(qparams.get("offset"), 0);
 		int limit = parseIntOrDefault(qparams.get("limit"), 100);
-		sendResponse(exchange, getFunctionXrefs(name, offset, limit));
+		String programName = qparams.get("program");
+		sendResponse(exchange, getFunctionXrefs(name, offset, limit, programName));
 	}
 
 	/**
@@ -51,8 +51,8 @@ public final class GetFunctionXrefs extends Handler {
 	 * @param limit        the maximum number of results to return
 	 * @return a string containing the references or an error message
 	 */
-	private String getFunctionXrefs(String functionName, int offset, int limit) {
-		Program program = getCurrentProgram(tool);
+	private String getFunctionXrefs(String functionName, int offset, int limit, String programName) {
+		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
 		if (functionName == null || functionName.isEmpty())

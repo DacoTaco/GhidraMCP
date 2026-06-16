@@ -12,7 +12,6 @@ import java.io.IOException;
 import java.util.*;
 
 import static com.lauriewired.util.ParseUtils.*;
-import static ghidra.program.util.GhidraProgramUtilities.getCurrentProgram;
 
 /**
  * Handler for searching for byte sequences in the current program's memory.
@@ -41,7 +40,8 @@ public final class SearchBytes extends Handler {
 		String bytesHex = qparams.get("bytes");
 		int offset = parseIntOrDefault(qparams.get("offset"), 0);
 		int limit = parseIntOrDefault(qparams.get("limit"), 100);
-		sendResponse(exchange, searchBytes(bytesHex, offset, limit));
+		String programName = qparams.get("program");
+		sendResponse(exchange, searchBytes(bytesHex, offset, limit, programName));
 	}
 
 	/**
@@ -52,8 +52,8 @@ public final class SearchBytes extends Handler {
 	 * @param limit    The maximum number of results to return.
 	 * @return A string containing the search results, formatted for pagination.
 	 */
-	private String searchBytes(String bytesHex, int offset, int limit) {
-		Program program = getCurrentProgram(tool);
+	private String searchBytes(String bytesHex, int offset, int limit, String programName) {
+		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
 		if (bytesHex == null || bytesHex.isEmpty())

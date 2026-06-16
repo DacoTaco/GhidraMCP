@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.Map;
 
 import static com.lauriewired.util.ParseUtils.*;
-import static ghidra.program.util.GhidraProgramUtilities.getCurrentProgram;
 
 /**
  * Handler to get all references to a specific address in the current program.
@@ -44,7 +43,8 @@ public final class GetXrefsTo extends Handler {
 		String address = qparams.get("address");
 		int offset = parseIntOrDefault(qparams.get("offset"), 0);
 		int limit = parseIntOrDefault(qparams.get("limit"), 100);
-		sendResponse(exchange, getXrefsTo(address, offset, limit));
+		String programName = qparams.get("program");
+		sendResponse(exchange, getXrefsTo(address, offset, limit, programName));
 	}
 
 	/**
@@ -55,8 +55,8 @@ public final class GetXrefsTo extends Handler {
 	 * @param limit      the maximum number of results to return
 	 * @return a string representation of the references found
 	 */
-	private String getXrefsTo(String addressStr, int offset, int limit) {
-		Program program = getCurrentProgram(tool);
+	private String getXrefsTo(String addressStr, int offset, int limit, String programName) {
+		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
 		if (addressStr == null || addressStr.isEmpty())

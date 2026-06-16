@@ -19,7 +19,6 @@ import java.util.Set;
 
 import static com.lauriewired.util.ParseUtils.parseQueryParams;
 import static com.lauriewired.util.ParseUtils.sendResponse;
-import static ghidra.program.util.GhidraProgramUtilities.getCurrentProgram;
 
 /**
  * Handler for GET requests to retrieve the callees of a function at a specific address.
@@ -34,19 +33,20 @@ public class GetCallee extends Handler {
     public void handle(HttpExchange exchange) throws IOException {
         Map<String, String> qparams = parseQueryParams(exchange);
         String addressStr = qparams.get("address");
-        sendResponse(exchange, getCallee(addressStr));
+        String programName = qparams.get("program");
+        sendResponse(exchange, getCallee(programName, addressStr));
     }
 
     /**
      * Retrieves the callees of a function at the specified address and encodes as JSON.
      */
-    private String getCallee(String addressStr) {
+    private String getCallee(String programName, String addressStr) {
         if (addressStr == null) {
             return "[]"; // Missing address parameter
         }
 
         try {
-            Program currentProgram = getCurrentProgram(tool);
+            Program currentProgram = getProgramByName(programName);
             if (currentProgram == null) {
                 return "[]"; // No active program
             }

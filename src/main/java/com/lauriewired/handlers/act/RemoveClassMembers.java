@@ -23,7 +23,6 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static com.lauriewired.util.ParseUtils.*;
-import static ghidra.program.util.GhidraProgramUtilities.getCurrentProgram;
 
 /**
  * Handler for removing members from a C++ class in Ghidra.
@@ -55,12 +54,13 @@ public final class RemoveClassMembers extends Handler {
 		String className = params.get("class_name");
 		String parentNamespace = params.get("parent_namespace");
 		String membersParam = params.get("members");
+		String programName = params.get("program");
 
 		if (className == null || membersParam == null) {
 			sendResponse(exchange, "class_name and members are required");
 			return;
 		}
-		sendResponse(exchange, removeClassMembers(className, parentNamespace, membersParam));
+		sendResponse(exchange, removeClassMembers(className, parentNamespace, membersParam, programName));
 	}
 
 	/**
@@ -71,8 +71,8 @@ public final class RemoveClassMembers extends Handler {
 	 * @param membersParam JSON array of member names to remove, or single member name.
 	 * @return A message indicating success or failure.
 	 */
-	private String removeClassMembers(String className, String parentNamespace, String membersParam) {
-		Program program = getCurrentProgram(tool);
+	private String removeClassMembers(String className, String parentNamespace, String membersParam, String programName) {
+		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
 

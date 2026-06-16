@@ -20,7 +20,6 @@ import static com.lauriewired.util.GhidraUtils.*;
 import static com.lauriewired.util.ParseUtils.*;
 import static com.lauriewired.util.StructUtils.StructMember;
 import ghidra.program.model.data.CategoryPath;
-import static ghidra.program.util.GhidraProgramUtilities.getCurrentProgram;
 
 /**
  * Handler for adding members to a structure in Ghidra.
@@ -55,24 +54,26 @@ public final class AddStructMembers extends Handler {
 		String structName = params.get("struct_name");
 		String category = params.get("category");
 		String membersJson = params.get("members");
+		String programName = params.get("program");
 
 		if (structName == null || membersJson == null) {
 			sendResponse(exchange, "struct_name and members are required");
 			return;
 		}
-		sendResponse(exchange, addStructMembers(structName, category, membersJson));
+		sendResponse(exchange, addStructMembers(programName, structName, category, membersJson));
 	}
 
 	/**
 	 * Adds members to a structure in the current Ghidra program.
 	 *
+	 * @param programName The name of the program containing the structure.
 	 * @param structName The name of the structure to modify.
 	 * @param category   The category path where the structure is located (optional).
 	 * @param membersJson JSON array of members to add.
 	 * @return A message indicating success or failure.
 	 */
-	private String addStructMembers(String structName, String category, String membersJson) {
-		Program program = getCurrentProgram(tool);
+	private String addStructMembers(String programName, String structName, String category, String membersJson) {
+		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
 

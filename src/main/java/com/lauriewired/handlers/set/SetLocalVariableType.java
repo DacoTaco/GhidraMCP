@@ -26,7 +26,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.lauriewired.util.GhidraUtils.resolveDataType;
 import static com.lauriewired.util.ParseUtils.*;
-import static ghidra.program.util.GhidraProgramUtilities.getCurrentProgram;
 
 /**
  * Handler for setting the type of a local variable in a function.
@@ -55,6 +54,7 @@ public final class SetLocalVariableType extends Handler {
 		String functionAddress = params.get("function_address");
 		String variableName = params.get("variable_name");
 		String newType = params.get("new_type");
+		String programName = params.get("program");
 
 		// Capture detailed information about setting the type
 		StringBuilder responseMsg = new StringBuilder();
@@ -63,7 +63,7 @@ public final class SetLocalVariableType extends Handler {
 				.append(" in function at ").append(functionAddress).append("\n\n");
 
 		// Attempt to find the data type in various categories
-		Program program = getCurrentProgram(tool);
+		Program program = getProgramByName(programName);
 		if (program != null) {
 			DataTypeManager dtm = program.getDataTypeManager();
 			DataType directType = findDataTypeByNameInAllCategories(dtm, newType);
@@ -83,7 +83,7 @@ public final class SetLocalVariableType extends Handler {
 		}
 
 		// Try to set the type
-		boolean success = setLocalVariableType(functionAddress, variableName, newType);
+		boolean success = setLocalVariableType(programName, functionAddress, variableName, newType);
 
 		String successMsg = success ? "Variable type set successfully" : "Failed to set variable type";
 		responseMsg.append("\nResult: ").append(successMsg);
@@ -99,9 +99,9 @@ public final class SetLocalVariableType extends Handler {
 	 * @param newType         The new type to set for the variable.
 	 * @return true if the type was set successfully, false otherwise.
 	 */
-	private boolean setLocalVariableType(String functionAddrStr, String variableName, String newType) {
+	private boolean setLocalVariableType(String programName, String functionAddrStr, String variableName, String newType) {
 		// Input validation
-		Program program = getCurrentProgram(tool);
+		Program program = getProgramByName(programName);
 		if (program == null)
 			return false;
 		if (functionAddrStr == null || functionAddrStr.isEmpty() ||

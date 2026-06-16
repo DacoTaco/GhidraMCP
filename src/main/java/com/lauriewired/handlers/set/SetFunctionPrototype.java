@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.lauriewired.util.ParseUtils.parsePostParams;
 import static com.lauriewired.util.ParseUtils.sendResponse;
-import static ghidra.program.util.GhidraProgramUtilities.getCurrentProgram;
+ 
 
 /**
  * Handler to set a function prototype in Ghidra
@@ -85,9 +85,10 @@ public final class SetFunctionPrototype extends Handler {
 		Map<String, String> params = parsePostParams(exchange);
 		String functionAddress = params.get("function_address");
 		String prototype = params.get("prototype");
+		String programName = params.get("program");
 
 		// Call the set prototype function and get detailed result
-		PrototypeResult result = setFunctionPrototype(functionAddress, prototype);
+		PrototypeResult result = setFunctionPrototype(functionAddress, prototype, programName);
 
 		if (result.isSuccess()) {
 			// Even with successful operations, include any warning messages for debugging
@@ -109,9 +110,9 @@ public final class SetFunctionPrototype extends Handler {
 	 * @param prototype       The prototype string to set
 	 * @return PrototypeResult indicating success or failure with error message
 	 */
-	private PrototypeResult setFunctionPrototype(String functionAddrStr, String prototype) {
+	private PrototypeResult setFunctionPrototype(String functionAddrStr, String prototype, String programName) {
 		// Input validation
-		Program program = getCurrentProgram(tool);
+		Program program = getProgramByName(programName);
 		if (program == null)
 			return new PrototypeResult(false, "No program loaded");
 		if (functionAddrStr == null || functionAddrStr.isEmpty()) {

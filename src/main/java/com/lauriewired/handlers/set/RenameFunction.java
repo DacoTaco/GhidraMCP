@@ -16,7 +16,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.lauriewired.util.ParseUtils.parsePostParams;
 import static com.lauriewired.util.ParseUtils.sendResponse;
-import static ghidra.program.util.GhidraProgramUtilities.getCurrentProgram;
 
 /**
  * Handler for renaming a function in the current program.
@@ -42,7 +41,8 @@ public final class RenameFunction extends Handler {
 	@Override
 	public void handle(HttpExchange exchange) throws IOException {
 		Map<String, String> params = parsePostParams(exchange);
-		String response = rename(params.get("oldName"), params.get("newName"))
+		String programName = params.get("program");
+		String response = rename(programName, params.get("oldName"), params.get("newName"))
 				? "Renamed successfully"
 				: "Rename failed";
 		sendResponse(exchange, response);
@@ -55,8 +55,8 @@ public final class RenameFunction extends Handler {
 	 * @param newName the new name to set for the function
 	 * @return true if the rename was successful, false otherwise
 	 */
-	private boolean rename(String oldName, String newName) {
-		Program program = getCurrentProgram(tool);
+	private boolean rename(String programName, String oldName, String newName) {
+		Program program = getProgramByName(programName);
 		if (program == null)
 			return false;
 

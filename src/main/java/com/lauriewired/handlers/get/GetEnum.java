@@ -15,7 +15,6 @@ import java.util.*;
 
 import static com.lauriewired.util.ParseUtils.*;
 import ghidra.program.model.data.CategoryPath;
-import static ghidra.program.util.GhidraProgramUtilities.getCurrentProgram;
 
 /**
  * Handler for retrieving details of an enum by its name and category.
@@ -42,11 +41,12 @@ public final class GetEnum extends Handler {
 		Map<String, String> qparams = parseQueryParams(exchange);
 		String enumName = qparams.get("name");
 		String category = qparams.get("category");
+		String programName = qparams.get("program");
 		if (enumName == null) {
 			sendResponse(exchange, "name is required");
 			return;
 		}
-		sendResponse(exchange, getEnum(enumName, category));
+		sendResponse(exchange, getEnum(enumName, category, programName));
 	}
 
 	/**
@@ -58,8 +58,8 @@ public final class GetEnum extends Handler {
 	 * @return a JSON representation of the enum or an error message if not
 	 *         found.
 	 */
-	private String getEnum(String enumName, String category) {
-		Program program = getCurrentProgram(tool);
+	private String getEnum(String enumName, String category, String programName) {
+		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
 

@@ -9,12 +9,13 @@ import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Program;
 import ghidra.util.task.ConsoleTaskMonitor;
+import java.util.*;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 import static com.lauriewired.util.ParseUtils.sendResponse;
-import static ghidra.program.util.GhidraProgramUtilities.getCurrentProgram;
+import static com.lauriewired.util.ParseUtils.parseQueryParams;
 
 /**
  * Handler to decompile a function by its name.
@@ -40,8 +41,10 @@ public final class DecompileFunctionByName extends Handler {
 	 */
 	@Override
 	public void handle(HttpExchange exchange) throws IOException {
+		Map<String, String> qparams = parseQueryParams(exchange);
+		String programName = qparams.get("program");
 		String name = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-		sendResponse(exchange, generateResponse(name));
+		sendResponse(exchange, generateResponse(name, programName));
 	}
 
 	/**
@@ -52,8 +55,8 @@ public final class DecompileFunctionByName extends Handler {
 	 * @return The decompiled C pseudocode or an error message if the function is
 	 *         not found.
 	 */
-	private String generateResponse(String name) {
-		Program program = getCurrentProgram(tool);
+	private String generateResponse(String name, String programName) {
+		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
 		DecompInterface decomp = new DecompInterface();

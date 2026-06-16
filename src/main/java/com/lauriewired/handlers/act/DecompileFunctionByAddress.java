@@ -15,7 +15,6 @@ import java.util.Map;
 
 import static com.lauriewired.util.ParseUtils.parseQueryParams;
 import static com.lauriewired.util.ParseUtils.sendResponse;
-import static ghidra.program.util.GhidraProgramUtilities.getCurrentProgram;
 
 /**
  * Handler to decompile a function by its address in the current program.
@@ -43,7 +42,8 @@ public final class DecompileFunctionByAddress extends Handler {
 	public void handle(HttpExchange exchange) throws IOException {
 		Map<String, String> qparams = parseQueryParams(exchange);
 		String address = qparams.get("address");
-		sendResponse(exchange, decompileFunctionByAddress(address));
+		String programName = qparams.get("program");
+		sendResponse(exchange, decompileFunctionByAddress(address, programName));
 	}
 
 	/**
@@ -52,8 +52,8 @@ public final class DecompileFunctionByAddress extends Handler {
 	 * @param addressStr the address of the function to decompile
 	 * @return the decompiled C code or an error message
 	 */
-	private String decompileFunctionByAddress(String addressStr) {
-		Program program = getCurrentProgram(tool);
+	private String decompileFunctionByAddress(String addressStr, String programName) {
+		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
 		if (addressStr == null || addressStr.isEmpty())

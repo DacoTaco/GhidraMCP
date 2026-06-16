@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.Map;
 
 import static com.lauriewired.util.ParseUtils.*;
-import static ghidra.program.util.GhidraProgramUtilities.getCurrentProgram;
 
 /** Handler for getting cross-references from a specific address */
 public final class GetXrefsFrom extends Handler {
@@ -41,7 +40,8 @@ public final class GetXrefsFrom extends Handler {
 		String address = qparams.get("address");
 		int offset = parseIntOrDefault(qparams.get("offset"), 0);
 		int limit = parseIntOrDefault(qparams.get("limit"), 100);
-		sendResponse(exchange, getXrefsFrom(address, offset, limit));
+		String programName = qparams.get("program");
+		sendResponse(exchange, getXrefsFrom(programName, address, offset, limit));
 	}
 
 	/**
@@ -52,8 +52,8 @@ public final class GetXrefsFrom extends Handler {
 	 * @param limit      The maximum number of references to return.
 	 * @return A string containing the references or an error message.
 	 */
-	private String getXrefsFrom(String addressStr, int offset, int limit) {
-		Program program = getCurrentProgram(tool);
+	private String getXrefsFrom(String programName, String addressStr, int offset, int limit) {
+		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
 		if (addressStr == null || addressStr.isEmpty())

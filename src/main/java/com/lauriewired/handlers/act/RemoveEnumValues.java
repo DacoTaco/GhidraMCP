@@ -18,7 +18,6 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static com.lauriewired.util.ParseUtils.*;
 import ghidra.program.model.data.CategoryPath;
-import static ghidra.program.util.GhidraProgramUtilities.getCurrentProgram;
 
 /**
  * Handler for removing values from an enum in Ghidra.
@@ -49,12 +48,13 @@ public final class RemoveEnumValues extends Handler {
 		String enumName = params.get("enum_name");
 		String category = params.get("category");
 		String valuesParam = params.get("values");
+		String programName = params.get("program");
 
 		if (enumName == null || valuesParam == null) {
 			sendResponse(exchange, "enum_name and values are required");
 			return;
 		}
-		sendResponse(exchange, removeEnumValues(enumName, category, valuesParam));
+		sendResponse(exchange, removeEnumValues(enumName, category, valuesParam, programName));
 	}
 
 	/**
@@ -65,8 +65,8 @@ public final class RemoveEnumValues extends Handler {
 	 * @param valuesParam JSON array of value names to remove, or single value name.
 	 * @return A message indicating success or failure.
 	 */
-	private String removeEnumValues(String enumName, String category, String valuesParam) {
-		Program program = getCurrentProgram(tool);
+	private String removeEnumValues(String enumName, String category, String valuesParam, String programName) {
+		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
 

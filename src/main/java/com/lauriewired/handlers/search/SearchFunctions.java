@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.Map;
 
 import static com.lauriewired.util.ParseUtils.*;
-import static ghidra.program.util.GhidraProgramUtilities.getCurrentProgram;
 
 /**
  * Handler for searching functions by name in the current program.
@@ -45,7 +44,8 @@ public final class SearchFunctions extends Handler {
 		String searchTerm = qparams.get("query");
 		int offset = parseIntOrDefault(qparams.get("offset"), 0);
 		int limit = parseIntOrDefault(qparams.get("limit"), 100);
-		sendResponse(exchange, searchFunctionsByName(searchTerm, offset, limit));
+		String programName = qparams.get("program");
+		sendResponse(exchange, searchFunctionsByName(searchTerm, offset, limit, programName));
 	}
 
 	/**
@@ -57,8 +57,8 @@ public final class SearchFunctions extends Handler {
 	 * @param limit      the maximum number of results to return.
 	 * @return a string containing the results or an error message.
 	 */
-	private String searchFunctionsByName(String searchTerm, int offset, int limit) {
-		Program program = getCurrentProgram(tool);
+	private String searchFunctionsByName(String searchTerm, int offset, int limit, String programName) {
+		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
 		if (searchTerm == null || searchTerm.isEmpty())

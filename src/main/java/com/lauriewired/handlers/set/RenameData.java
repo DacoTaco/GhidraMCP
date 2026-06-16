@@ -19,7 +19,6 @@ import java.util.Map;
 
 import static com.lauriewired.util.ParseUtils.parsePostParams;
 import static com.lauriewired.util.ParseUtils.sendResponse;
-import static ghidra.program.util.GhidraProgramUtilities.getCurrentProgram;
 
 /**
  * Handler for renaming data at a specific address in the current program.
@@ -46,7 +45,8 @@ public final class RenameData extends Handler {
 	@Override
 	public void handle(HttpExchange exchange) throws IOException {
 		Map<String, String> params = parsePostParams(exchange);
-		renameDataAtAddress(params.get("address"), params.get("newName"));
+		String programName = params.get("program");
+		renameDataAtAddress(params.get("address"), params.get("newName"), programName);
 		sendResponse(exchange, "Rename data attempted");
 	}
 
@@ -57,8 +57,8 @@ public final class RenameData extends Handler {
 	 * @param addressStr the address of the data as a string
 	 * @param newName    the new name for the data
 	 */
-	private void renameDataAtAddress(String addressStr, String newName) {
-		Program program = getCurrentProgram(tool);
+	private void renameDataAtAddress(String addressStr, String newName, String programName) {
+		Program program = getProgramByName(programName);
 		if (program == null)
 			return;
 

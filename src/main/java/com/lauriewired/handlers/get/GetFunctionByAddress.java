@@ -12,7 +12,6 @@ import java.util.Map;
 
 import static com.lauriewired.util.ParseUtils.parseQueryParams;
 import static com.lauriewired.util.ParseUtils.sendResponse;
-import static ghidra.program.util.GhidraProgramUtilities.getCurrentProgram;
 
 /**
  * Handler to get function details by address
@@ -32,7 +31,8 @@ public final class GetFunctionByAddress extends Handler {
 	public void handle(HttpExchange exchange) throws IOException {
 		Map<String, String> qparams = parseQueryParams(exchange);
 		String address = qparams.get("address");
-		sendResponse(exchange, getFunctionByAddress(address));
+		String programName = qparams.get("program");
+		sendResponse(exchange, getFunctionByAddress(address, programName));
 	}
 
 	/**
@@ -41,8 +41,8 @@ public final class GetFunctionByAddress extends Handler {
 	 * @param addressStr the address as a string
 	 * @return a string containing function details or an error message
 	 */
-	private String getFunctionByAddress(String addressStr) {
-		Program program = getCurrentProgram(tool);
+	private String getFunctionByAddress(String addressStr, String programName) {
+		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
 		if (addressStr == null || addressStr.isEmpty())

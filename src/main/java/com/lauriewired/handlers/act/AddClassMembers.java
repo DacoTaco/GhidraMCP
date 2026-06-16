@@ -26,7 +26,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import static com.lauriewired.util.GhidraUtils.*;
 import static com.lauriewired.util.ParseUtils.*;
 import static com.lauriewired.util.StructUtils.StructMember;
-import static ghidra.program.util.GhidraProgramUtilities.getCurrentProgram;
 
 /**
  * Handler for adding members to a C++ class in Ghidra.
@@ -62,12 +61,13 @@ public final class AddClassMembers extends Handler {
 		String className = params.get("class_name");
 		String parentNamespace = params.get("parent_namespace");
 		String membersJson = params.get("members");
+		String programName = params.get("program");
 
 		if (className == null || membersJson == null) {
 			sendResponse(exchange, "class_name and members are required");
 			return;
 		}
-		sendResponse(exchange, addClassMembers(className, parentNamespace, membersJson));
+		sendResponse(exchange, addClassMembers(className, parentNamespace, membersJson, programName));
 	}
 
 	/**
@@ -78,8 +78,8 @@ public final class AddClassMembers extends Handler {
 	 * @param membersJson JSON array of members to add.
 	 * @return A message indicating success or failure.
 	 */
-	private String addClassMembers(String className, String parentNamespace, String membersJson) {
-		Program program = getCurrentProgram(tool);
+	private String addClassMembers(String className, String parentNamespace, String membersJson, String programName) {
+		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
 

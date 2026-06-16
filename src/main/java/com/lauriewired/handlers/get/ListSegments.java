@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.Map;
 
 import static com.lauriewired.util.ParseUtils.*;
-import static ghidra.program.util.GhidraProgramUtilities.getCurrentProgram;
 
 /**
  * Handler for listing memory segments in the current program.
@@ -41,7 +40,8 @@ public final class ListSegments extends Handler {
 		Map<String, String> qparams = parseQueryParams(exchange);
 		int offset = parseIntOrDefault(qparams.get("offset"), 0);
 		int limit = parseIntOrDefault(qparams.get("limit"), 100);
-		sendResponse(exchange, listSegments(offset, limit));
+		String programName = qparams.get("program");
+		sendResponse(exchange, listSegments(programName, offset, limit));
 	}
 
 	/**
@@ -52,8 +52,8 @@ public final class ListSegments extends Handler {
 	 * @return a string representation of the memory segments, formatted for
 	 *         pagination.
 	 */
-	private String listSegments(int offset, int limit) {
-		Program program = getCurrentProgram(tool);
+	private String listSegments(String programName, int offset, int limit) {
+		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
 

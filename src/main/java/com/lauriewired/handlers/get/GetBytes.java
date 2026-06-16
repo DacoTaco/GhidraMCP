@@ -10,7 +10,6 @@ import java.io.IOException;
 import java.util.*;
 
 import static com.lauriewired.util.ParseUtils.*;
-import static ghidra.program.util.GhidraProgramUtilities.getCurrentProgram;
 
 /**
  * Handler to get bytes from a specified address in the current program.
@@ -37,7 +36,8 @@ public final class GetBytes extends Handler {
 		Map<String, String> qparams = parseQueryParams(exchange);
 		String addrStr = qparams.get("address");
 		int size = parseIntOrDefault(qparams.get("size"), 1);
-		sendResponse(exchange, getBytes(addrStr, size));
+		String programName = qparams.get("program");
+		sendResponse(exchange, getBytes(addrStr, size, programName));
 	}
 
 	/**
@@ -47,8 +47,8 @@ public final class GetBytes extends Handler {
 	 * @param size       The number of bytes to read.
 	 * @return A string representation of the bytes in hex format.
 	 */
-	private String getBytes(String addressStr, int size) {
-		Program program = getCurrentProgram(tool);
+	private String getBytes(String addressStr, int size, String programName) {
+		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
 		if (addressStr == null || addressStr.isEmpty())

@@ -16,7 +16,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.lauriewired.util.ParseUtils.parsePostParams;
 import static com.lauriewired.util.ParseUtils.sendResponse;
-import static ghidra.program.util.GhidraProgramUtilities.getCurrentProgram;
 
 /**
  * Handler to rename a function by its address
@@ -42,7 +41,8 @@ public final class RenameFunctionByAddress extends Handler {
 		Map<String, String> params = parsePostParams(exchange);
 		String functionAddress = params.get("function_address");
 		String newName = params.get("new_name");
-		boolean success = renameFunctionByAddress(functionAddress, newName);
+		String programName = params.get("program");
+		boolean success = renameFunctionByAddress(programName, functionAddress, newName);
 		sendResponse(exchange, success ? "Function renamed successfully" : "Failed to rename function");
 	}
 
@@ -53,8 +53,8 @@ public final class RenameFunctionByAddress extends Handler {
 	 * @param newName         the new name for the function
 	 * @return true if the rename was successful, false otherwise
 	 */
-	private boolean renameFunctionByAddress(String functionAddrStr, String newName) {
-		Program program = getCurrentProgram(tool);
+	private boolean renameFunctionByAddress(String programName, String functionAddrStr, String newName) {
+		Program program = getProgramByName(programName);
 		if (program == null)
 			return false;
 		if (functionAddrStr == null || functionAddrStr.isEmpty() ||

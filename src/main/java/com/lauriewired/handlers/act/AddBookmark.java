@@ -15,7 +15,6 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static com.lauriewired.util.ParseUtils.parsePostParams;
 import static com.lauriewired.util.ParseUtils.sendResponse;
-import static ghidra.program.util.GhidraProgramUtilities.getCurrentProgram;
 
 /**
  * Handler for POST requests to add a bookmark at a specific address.
@@ -54,11 +53,11 @@ public class AddBookmark extends Handler {
 			return;
 		}
 
-		sendResponse(exchange, addBookmark(addressStr, category, comment, type));
+		sendResponse(exchange, addBookmark(params.get("program"), addressStr, category, comment, type));
 	}
 
-	private String addBookmark(String addressStr, String category, String comment, String type) {
-		Program currentProgram = getCurrentProgram(tool);
+	private String addBookmark(String programName, String addressStr, String category, String comment, String type) {
+		Program currentProgram = getProgramByName(programName);
 		if (currentProgram == null) {
 			return "No active program";
 		}

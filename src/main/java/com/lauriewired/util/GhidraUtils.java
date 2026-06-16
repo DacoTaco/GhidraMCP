@@ -2,6 +2,7 @@ package com.lauriewired.util;
 
 import ghidra.app.services.ProgramManager;
 import ghidra.framework.plugintool.PluginTool;
+import ghidra.framework.model.*;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.address.Address;
@@ -15,9 +16,11 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import ghidra.app.services.DataTypeManagerService;
-import static ghidra.program.util.GhidraProgramUtilities.getCurrentProgram;
 import ghidra.util.data.DataTypeParser;
 import ghidra.util.data.DataTypeParser.AllowedDataTypes;
+
+import java.util.*;
+
 
 /**
  * Utility class for Ghidra-related operations.
@@ -25,15 +28,41 @@ import ghidra.util.data.DataTypeParser.AllowedDataTypes;
  * and set comments at specific addresses.
  */
 public final class GhidraUtils {
+
 	/**
-	 * Gets the current program from the specified plugin tool.
-	 *
-	 * @param tool the plugin tool
-	 * @return the current program, or null if not available
+	 * Resolve a program by name using the provided PluginTool. If programName is
+	 * null or empty, returns the current program.
 	 */
-	public static Program getCurrentProgram(PluginTool tool) {
-		ProgramManager pm = tool.getService(ProgramManager.class);
-		return pm != null ? pm.getCurrentProgram() : null;
+	public static Program getProgramByName(PluginTool tool, String programName) {
+		Project project = tool.getProject();
+        if (project == null) {
+            return null;
+        }
+
+		ToolManager tm = project.getToolManager();
+		if (tm == null) {
+			return null;
+		}
+
+		//Lookup program by name across all open programs in all tools
+		for (PluginTool runningTool : tm.getRunningTools()) {
+			ProgramManager pm = runningTool.getService(ProgramManager.class);
+			if (pm == null)
+				continue;
+
+			for (Program p : pm.getAllOpenPrograms()) {
+				if (programName == null || programName.isEmpty())
+					return p;
+
+				if (p.getName().equals(programName)
+						|| p.getDomainFile().getName().equals(programName)
+						|| p.getDomainFile().getPathname().equals(programName)) {
+					return p;
+				}
+			}
+		}
+		
+        return null;
 	}
 
 	/**
@@ -85,9 +114,9 @@ public final class GhidraUtils {
 	 * @param transactionName the name of the transaction for logging
 	 * @return true if successful, false otherwise
 	 */
-	public static boolean setCommentAtAddress(PluginTool tool,
+	public static boolean setCommentAtAddress(PluginTool tool, String programName,
 			String addressStr, String comment, CommentType commentType, String transactionName) {
-		Program program = getCurrentProgram(tool);
+		Program program = getProgramByName(tool, programName);
 		if (program == null)
 			return false;
 		if (addressStr == null || addressStr.isEmpty() || comment == null)

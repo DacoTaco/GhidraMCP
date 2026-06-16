@@ -16,7 +16,6 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static com.lauriewired.util.ParseUtils.*;
 import ghidra.program.model.data.CategoryPath;
-import static ghidra.program.util.GhidraProgramUtilities.getCurrentProgram;
 
 /**
  * Handler for clearing the contents of a structure in Ghidra.
@@ -45,11 +44,12 @@ public final class ClearStruct extends Handler {
 		Map<String, String> params = parsePostParams(exchange);
 		String structName = params.get("struct_name");
 		String category = params.get("category");
+		String programName = params.get("program");
 		if (structName == null) {
 			sendResponse(exchange, "struct_name is required");
 			return;
 		}
-		sendResponse(exchange, clearStruct(structName, category));
+		sendResponse(exchange, clearStruct(structName, category, programName));
 	}
 
 	/**
@@ -59,8 +59,8 @@ public final class ClearStruct extends Handler {
 	 * @param category   the category of the structure
 	 * @return a message indicating the result of the operation
 	 */
-	private String clearStruct(String structName, String category) {
-		Program program = getCurrentProgram(tool);
+	private String clearStruct(String structName, String category, String programName) {
+		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
 

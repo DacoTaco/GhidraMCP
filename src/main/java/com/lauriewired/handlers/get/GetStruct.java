@@ -16,7 +16,6 @@ import java.util.*;
 
 import static com.lauriewired.util.ParseUtils.*;
 import ghidra.program.model.data.CategoryPath;
-import static ghidra.program.util.GhidraProgramUtilities.getCurrentProgram;
 
 /**
  * Handler for retrieving details of a structure by its name and category.
@@ -43,11 +42,12 @@ public final class GetStruct extends Handler {
 		Map<String, String> qparams = parseQueryParams(exchange);
 		String structName = qparams.get("name");
 		String category = qparams.get("category");
+		String programName = qparams.get("program");
 		if (structName == null) {
 			sendResponse(exchange, "name is required");
 			return;
 		}
-		sendResponse(exchange, getStruct(structName, category));
+		sendResponse(exchange, getStruct(structName, category, programName));
 	}
 
 	/**
@@ -59,8 +59,8 @@ public final class GetStruct extends Handler {
 	 * @return a JSON representation of the structure or an error message if not
 	 *         found.
 	 */
-	private String getStruct(String structName, String category) {
-		Program program = getCurrentProgram(tool);
+	private String getStruct(String structName, String category, String programName) {
+		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
 
