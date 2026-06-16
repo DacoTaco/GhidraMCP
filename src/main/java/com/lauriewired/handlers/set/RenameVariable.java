@@ -2,8 +2,7 @@ package com.lauriewired.handlers.set;
 
 import com.lauriewired.handlers.Handler;
 import com.sun.net.httpserver.HttpExchange;
-import ghidra.app.decompiler.DecompInterface;
-import ghidra.app.decompiler.DecompileResults;
+import ghidra.app.decompiler.*;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Parameter;
@@ -73,6 +72,9 @@ public final class RenameVariable extends Handler {
 			return "No program loaded";
 
 		DecompInterface decomp = new DecompInterface();
+		DecompileOptions opts = new DecompileOptions();
+		opts.grabFromProgram(program);
+		decomp.setOptions(opts);
 		decomp.openProgram(program);
 
 		Function func = null;

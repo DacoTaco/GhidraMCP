@@ -2,13 +2,11 @@ package com.lauriewired.handlers.set;
 
 import com.lauriewired.handlers.Handler;
 import com.sun.net.httpserver.HttpExchange;
-import ghidra.app.decompiler.DecompInterface;
-import ghidra.app.decompiler.DecompileResults;
+import ghidra.app.decompiler.*;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeManager;
-import ghidra.program.model.data.PointerDataType;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.pcode.HighFunctionDBUtil;
@@ -264,6 +262,9 @@ public final class SetLocalVariableType extends Handler {
 	private DecompileResults decompileFunction(Function func, Program program) {
 		// Set up decompiler for accessing the decompiled function
 		DecompInterface decomp = new DecompInterface();
+		DecompileOptions opts = new DecompileOptions();
+		opts.grabFromProgram(program);
+		decomp.setOptions(opts);
 		decomp.openProgram(program);
 		decomp.setSimplificationStyle("decompile"); // Full decompilation
 
