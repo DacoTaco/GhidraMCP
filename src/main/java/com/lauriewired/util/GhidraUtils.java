@@ -1,25 +1,25 @@
 package com.lauriewired.util;
 
-import ghidra.app.services.ProgramManager;
-import ghidra.framework.plugintool.PluginTool;
-import ghidra.framework.model.*;
-import ghidra.program.model.data.DataType;
-import ghidra.program.model.data.DataTypeManager;
-import ghidra.program.model.address.Address;
-import ghidra.program.model.listing.Program;
-import ghidra.program.model.listing.CommentType;
-import ghidra.util.Msg;
-
-import javax.swing.*;
 import java.lang.reflect.InvocationTargetException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import javax.swing.SwingUtilities;
+
 import ghidra.app.services.DataTypeManagerService;
+import ghidra.app.services.ProgramManager;
+import ghidra.framework.model.Project;
+import ghidra.framework.model.ToolManager;
+import ghidra.framework.plugintool.PluginTool;
+import ghidra.program.model.address.Address;
+import ghidra.program.model.data.DataType;
+import ghidra.program.model.data.DataTypeManager;
+import ghidra.program.model.listing.CommentType;
+import ghidra.program.model.listing.Program;
+import ghidra.util.Msg;
 import ghidra.util.data.DataTypeParser;
 import ghidra.util.data.DataTypeParser.AllowedDataTypes;
-
-import java.util.*;
 
 
 /**
@@ -65,6 +65,56 @@ public final class GhidraUtils {
         return null;
 	}
 
+	public static <T> T resolveService(PluginTool currentTool, Program program, Class<T> serviceClass) 
+	{
+		if (currentTool == null || serviceClass == null)
+			return null;
+
+		// 1. Try current tool first (and optionally verify program context)
+		T service = currentTool.getService(serviceClass);
+		if (service != null && isProgramInTool(currentTool, program))
+			return service;
+
+		Project project = currentTool.getProject();
+		if (project == null)
+			return null;
+
+		ToolManager tm = project.getToolManager();
+		if (tm == null)
+			return null;
+
+		// 2. Search other tools, but ONLY those that have the program open
+		for (PluginTool tool : tm.getRunningTools()) {
+			if (tool == null)
+				continue;
+
+			if (!isProgramInTool(tool, program))
+				continue;
+
+			service = tool.getService(serviceClass);
+			if (service != null)
+				return service;
+		}
+
+		return null;
+	}
+
+	private static boolean isProgramInTool(PluginTool tool, Program program) {
+		if (tool == null || program == null)
+			return false;
+
+		ProgramManager pm = tool.getService(ProgramManager.class);
+		if (pm == null)
+			return false;
+
+		for (Program p : pm.getAllOpenPrograms()) {
+			if (p == program)
+				return true;
+		}
+
+		return false;
+	}
+
 	/**
 	 * Resolves a data type by name, handling common types and pointer types
 	 *
@@ -73,8 +123,8 @@ public final class GhidraUtils {
 	 * @param typeName The type name to resolve
 	 * @return The resolved DataType, or null if not found
 	 */
-	public static DataType resolveDataType(PluginTool tool, DataTypeManager dtm, String typeName) {
-		DataTypeManagerService dtms = tool.getService(DataTypeManagerService.class);
+	public static DataType resolveDataType(PluginTool tool, Program program, DataTypeManager dtm, String typeName) {
+		DataTypeManagerService dtms = resolveService(tool, program, DataTypeManagerService.class);
 		DataTypeManager[] managers = dtms.getDataTypeManagers();
 		DataType dt = null;
 
@@ -114,8 +164,7 @@ public final class GhidraUtils {
 	 * @param transactionName the name of the transaction for logging
 	 * @return true if successful, false otherwise
 	 */
-	public static boolean setCommentAtAddress(PluginTool tool, String programName,
-			String addressStr, String comment, CommentType commentType, String transactionName) {
+	public static boolean setCommentAtAddress(PluginTool tool, String programName, String addressStr, String comment, CommentType commentType, String transactionName) {
 		Program program = getProgramByName(tool, programName);
 		if (program == null)
 			return false;

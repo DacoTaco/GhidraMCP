@@ -47,10 +47,19 @@ dependencies {
     implementation 'io.modelcontextprotocol.sdk:mcp'
     implementation 'io.modelcontextprotocol.sdk:mcp-json-jackson3'
 
+    // HttpServer & Servlet dependencies
+    implementation 'jakarta.servlet:jakarta.servlet-api:6.1.0'
+    implementation 'org.eclipse.jetty:jetty-server:11.0.24'
+    implementation 'org.eclipse.jetty:jetty-servlet:11.0.24'
+
     testImplementation 'junit:junit:4.13.2'
 }
 
 java {
 	sourceCompatibility = JavaVersion.VERSION_21
 	targetCompatibility = JavaVersion.VERSION_21
+}
+
+tasks.withType(JavaCompile).configureEach {
+	options.compilerArgs += ["-Xlint:deprecation", "-Xlint:unchecked"]
 }
