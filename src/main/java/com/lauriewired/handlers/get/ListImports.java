@@ -1,17 +1,19 @@
 package com.lauriewired.handlers.get;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.eclipse.jetty.http.HttpMethod;
+
 import com.lauriewired.handlers.Handler;
-import com.sun.net.httpserver.HttpExchange;
+import com.lauriewired.http.HttpRoute;
+import com.lauriewired.http.Param;
+import com.lauriewired.mcp.McpTool;
+import static com.lauriewired.util.ParseUtils.paginateList;
+
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.Symbol;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
-import static com.lauriewired.util.ParseUtils.*;
 
 /**
  * Handler for listing all external symbols (imports) in the current program.
@@ -25,24 +27,7 @@ public final class ListImports extends Handler {
 	 * @param tool the PluginTool instance to use for accessing the current program.
 	 */
 	public ListImports(PluginTool tool) {
-		super(tool, "/imports");
-	}
-
-	/**
-	 * Handles the HTTP request to list imports.
-	 * Expects query parameters 'offset' and 'limit' for pagination.
-	 *
-	 * @param exchange the HttpExchange instance containing the request and
-	 *                 response.
-	 * @throws IOException if an I/O error occurs during handling.
-	 */
-	@Override
-	public void handle(HttpExchange exchange) throws IOException {
-		Map<String, String> qparams = parseQueryParams(exchange);
-		int offset = parseIntOrDefault(qparams.get("offset"), 0);
-		int limit = parseIntOrDefault(qparams.get("limit"), 100);
-		String programName = qparams.get("program");
-		sendResponse(exchange, listImports(offset, limit, programName));
+		super(tool);
 	}
 
 	/**
@@ -52,11 +37,15 @@ public final class ListImports extends Handler {
 	 * @param limit  the maximum number of results to return.
 	 * @return a string containing the paginated list of imports.
 	 */
-	private String listImports(int offset, int limit, String programName) {
+	@HttpRoute(method = HttpMethod.GET, path = "/imports")
+    @McpTool(name = "list_imports", description = "List imported symbols in the program with pagination.")
+    public String listImports(@Param(name = "program", nullable = true) String programName, @Param(name = "offset", nullable = true) Integer offset, @Param(name = "limit", nullable = true) Integer limit) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
 
+		offset = (offset == null) ? 0 : offset;
+        limit = (limit == null) ? 100 : limit;
 		List<String> lines = new ArrayList<>();
 		for (Symbol symbol : program.getSymbolTable().getExternalSymbols()) {
 			lines.add(symbol.getName() + " -> " + symbol.getAddress());

@@ -1,21 +1,27 @@
 package com.lauriewired.handlers.set;
 
+import java.lang.reflect.InvocationTargetException;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import javax.swing.SwingUtilities;
+
+import org.eclipse.jetty.http.HttpMethod;
+
 import com.lauriewired.handlers.Handler;
+import com.lauriewired.http.HttpRoute;
+import com.lauriewired.http.Param;
+import com.lauriewired.mcp.McpTool;
+import static com.lauriewired.util.ParseUtils.parsePostParams;
+import static com.lauriewired.util.ParseUtils.sendResponse;
 import com.sun.net.httpserver.HttpExchange;
+
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.SourceType;
 import ghidra.util.Msg;
-
-import javax.swing.*;
-import java.lang.reflect.InvocationTargetException;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import static com.lauriewired.util.ParseUtils.parsePostParams;
-import static com.lauriewired.util.ParseUtils.sendResponse;
 
 /**
  * Handler to rename a function by its address
@@ -27,23 +33,7 @@ public final class RenameFunctionByAddress extends Handler {
 	 * @param tool the PluginTool instance
 	 */
 	public RenameFunctionByAddress(PluginTool tool) {
-		super(tool, "/rename_function_by_address");
-	}
-
-	/**
-	 * Handle the HTTP request to rename a function by its address
-	 *
-	 * @param exchange the HttpExchange instance containing the request
-	 * @throws Exception if an error occurs during processing
-	 */
-	@Override
-	public void handle(HttpExchange exchange) throws Exception {
-		Map<String, String> params = parsePostParams(exchange);
-		String functionAddress = params.get("function_address");
-		String newName = params.get("new_name");
-		String programName = params.get("program");
-		boolean success = renameFunctionByAddress(programName, functionAddress, newName);
-		sendResponse(exchange, success ? "Function renamed successfully" : "Failed to rename function");
+		super(tool);
 	}
 
 	/**
@@ -53,20 +43,18 @@ public final class RenameFunctionByAddress extends Handler {
 	 * @param newName         the new name for the function
 	 * @return true if the rename was successful, false otherwise
 	 */
-	private boolean renameFunctionByAddress(String programName, String functionAddrStr, String newName) {
+	@HttpRoute(method = HttpMethod.POST, path = "/rename_function_by_address")
+    @McpTool(name = "rename_function_by_address", description = "Rename a function by its address.")
+	public boolean renameFunctionByAddress(@Param(name = "program", nullable = true) String programName, @Param(name = "function_address") String functionAddress, @Param(name = "new_name") String newName) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return false;
-		if (functionAddrStr == null || functionAddrStr.isEmpty() ||
-				newName == null || newName.isEmpty()) {
-			return false;
-		}
 
 		AtomicBoolean success = new AtomicBoolean(false);
 
 		try {
 			SwingUtilities.invokeAndWait(() -> {
-				performFunctionRename(program, functionAddrStr, newName, success);
+				performFunctionRename(program, functionAddress, newName, success);
 			});
 		} catch (InterruptedException | InvocationTargetException e) {
 			Msg.error(this, "Failed to execute rename function on Swing thread", e);

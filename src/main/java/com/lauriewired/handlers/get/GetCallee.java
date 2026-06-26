@@ -1,15 +1,5 @@
 package com.lauriewired.handlers.get;
 
-import com.lauriewired.handlers.Handler;
-import com.sun.net.httpserver.HttpExchange;
-import ghidra.framework.plugintool.PluginTool;
-import ghidra.program.model.address.Address;
-import ghidra.program.model.listing.Function;
-import ghidra.program.model.listing.Program;
-import ghidra.util.task.TaskMonitor;
-import com.google.gson.Gson;
-
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -17,8 +7,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static com.lauriewired.util.ParseUtils.parseQueryParams;
-import static com.lauriewired.util.ParseUtils.sendResponse;
+import org.eclipse.jetty.http.HttpMethod;
+
+import com.google.gson.Gson;
+import com.lauriewired.handlers.Handler;
+import com.lauriewired.http.HttpRoute;
+import com.lauriewired.http.Param;
+import com.lauriewired.mcp.McpTool;
+
+import ghidra.framework.plugintool.PluginTool;
+import ghidra.program.model.address.Address;
+import ghidra.program.model.listing.Function;
+import ghidra.program.model.listing.Program;
+import ghidra.util.task.TaskMonitor;
 
 /**
  * Handler for GET requests to retrieve the callees of a function at a specific address.
@@ -26,21 +27,16 @@ import static com.lauriewired.util.ParseUtils.sendResponse;
  */
 public class GetCallee extends Handler {
     public GetCallee(PluginTool tool) {
-        super(tool, "/get_callee");
-    }
-
-    @Override
-    public void handle(HttpExchange exchange) throws IOException {
-        Map<String, String> qparams = parseQueryParams(exchange);
-        String addressStr = qparams.get("address");
-        String programName = qparams.get("program");
-        sendResponse(exchange, getCallee(programName, addressStr));
+        super(tool);
     }
 
     /**
      * Retrieves the callees of a function at the specified address and encodes as JSON.
      */
-    private String getCallee(String programName, String addressStr) {
+    @HttpRoute(method = HttpMethod.GET, path = "/get_callee")
+    @McpTool(name = "get_callee", description = "Get the functions called by the function at the specified address.")
+    public String getCallee(@Param(name = "program", nullable=true) String programName, @Param(name = "address") String addressStr) 
+    {
         if (addressStr == null) {
             return "[]"; // Missing address parameter
         }

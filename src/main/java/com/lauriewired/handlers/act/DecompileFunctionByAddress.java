@@ -1,19 +1,20 @@
 package com.lauriewired.handlers.act;
 
+import org.eclipse.jetty.http.HttpMethod;
+
 import com.lauriewired.handlers.Handler;
-import com.sun.net.httpserver.HttpExchange;
-import ghidra.app.decompiler.*;
+import com.lauriewired.http.HttpRoute;
+import com.lauriewired.http.Param;
+import com.lauriewired.mcp.McpTool;
+
+import ghidra.app.decompiler.DecompInterface;
+import ghidra.app.decompiler.DecompileOptions;
+import ghidra.app.decompiler.DecompileResults;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Program;
 import ghidra.util.task.ConsoleTaskMonitor;
-
-import java.io.IOException;
-import java.util.Map;
-
-import static com.lauriewired.util.ParseUtils.parseQueryParams;
-import static com.lauriewired.util.ParseUtils.sendResponse;
 
 /**
  * Handler to decompile a function by its address in the current program.
@@ -27,36 +28,21 @@ public final class DecompileFunctionByAddress extends Handler {
 	 * @param tool the PluginTool instance to interact with Ghidra
 	 */
 	public DecompileFunctionByAddress(PluginTool tool) {
-		super(tool, "/decompile_function");
+		super(tool);
 	}
-
-	/**
-	 * Handles HTTP requests to decompile a function by its address.
-	 * Expects a query parameter "address" with the function's address.
-	 *
-	 * @param exchange the HttpExchange object representing the HTTP request
-	 * @throws IOException if an I/O error occurs during handling
-	 */
-	@Override
-	public void handle(HttpExchange exchange) throws IOException {
-		Map<String, String> qparams = parseQueryParams(exchange);
-		String address = qparams.get("address");
-		String programName = qparams.get("program");
-		sendResponse(exchange, decompileFunctionByAddress(address, programName));
-	}
-
+	
 	/**
 	 * Decompiles the function at the specified address in the current program.
 	 *
 	 * @param addressStr the address of the function to decompile
 	 * @return the decompiled C code or an error message
 	 */
-	private String decompileFunctionByAddress(String addressStr, String programName) {
+	@HttpRoute(method=HttpMethod.GET, path="/decompile_function")
+	@McpTool(name = "decompile_function_by_address", description = "Decompile a function at the given address.")
+	public String decompileFunctionByAddress(@Param(name="address") String addressStr, @Param(name="program", nullable=true) String programName) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
-		if (addressStr == null || addressStr.isEmpty())
-			return "Address is required";
 
 		try {
 			Address addr = program.getAddressFactory().getAddress(addressStr);

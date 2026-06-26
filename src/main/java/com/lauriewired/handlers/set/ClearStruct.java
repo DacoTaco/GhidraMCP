@@ -1,21 +1,23 @@
 package com.lauriewired.handlers.set;
 
+import java.lang.reflect.InvocationTargetException;
+import java.util.concurrent.atomic.AtomicReference;
+
+import javax.swing.SwingUtilities;
+
+import org.eclipse.jetty.http.HttpMethod;
+
 import com.lauriewired.handlers.Handler;
-import com.sun.net.httpserver.HttpExchange;
+import com.lauriewired.http.HttpRoute;
+import com.lauriewired.http.Param;
+import com.lauriewired.mcp.McpTool;
+
 import ghidra.framework.plugintool.PluginTool;
+import ghidra.program.model.data.CategoryPath;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.Structure;
 import ghidra.program.model.listing.Program;
-
-import javax.swing.SwingUtilities;
-import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
-
-import static com.lauriewired.util.ParseUtils.*;
-import ghidra.program.model.data.CategoryPath;
 
 /**
  * Handler for clearing the contents of a structure in Ghidra.
@@ -29,27 +31,7 @@ public final class ClearStruct extends Handler {
 	 * @param tool the PluginTool instance to use for program operations
 	 */
 	public ClearStruct(PluginTool tool) {
-		super(tool, "/clear_struct");
-	}
-
-	/**
-	 * Handles HTTP requests to clear a structure.
-	 * Expects POST parameters: struct_name (required), category (optional).
-	 *
-	 * @param exchange the HttpExchange object containing the request
-	 * @throws IOException if an I/O error occurs
-	 */
-	@Override
-	public void handle(HttpExchange exchange) throws IOException {
-		Map<String, String> params = parsePostParams(exchange);
-		String structName = params.get("struct_name");
-		String category = params.get("category");
-		String programName = params.get("program");
-		if (structName == null) {
-			sendResponse(exchange, "struct_name is required");
-			return;
-		}
-		sendResponse(exchange, clearStruct(structName, category, programName));
+		super(tool);
 	}
 
 	/**
@@ -59,7 +41,9 @@ public final class ClearStruct extends Handler {
 	 * @param category   the category of the structure
 	 * @return a message indicating the result of the operation
 	 */
-	private String clearStruct(String structName, String category, String programName) {
+	@HttpRoute(method = HttpMethod.POST, path = "/clear_struct")
+    @McpTool(name = "clear_struct", description = "Remove all members from a structure.")
+	public String clearStruct(@Param(name = "program", nullable = true) String programName, @Param(name = "struct_name") String structName, @Param(name = "category", nullable = true) String category){
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";

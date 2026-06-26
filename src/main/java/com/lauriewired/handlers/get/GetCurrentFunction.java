@@ -1,18 +1,18 @@
 package com.lauriewired.handlers.get;
 
+import org.eclipse.jetty.http.HttpMethod;
+
 import com.lauriewired.handlers.Handler;
-import com.sun.net.httpserver.HttpExchange;
+import com.lauriewired.http.HttpRoute;
+import com.lauriewired.http.Param;
+import com.lauriewired.mcp.McpTool;
+import com.lauriewired.util.GhidraUtils;
+
 import ghidra.app.services.CodeViewerService;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Program;
 import ghidra.program.util.ProgramLocation;
-
-import java.io.IOException;
-import java.util.*;
-
-import static com.lauriewired.util.ParseUtils.sendResponse;
-import static com.lauriewired.util.ParseUtils.parseQueryParams;
 
 /**
  * Handler to get the current function in Ghidra GUI.
@@ -25,20 +25,7 @@ public final class GetCurrentFunction extends Handler {
 	 * @param tool The Ghidra PluginTool instance.
 	 */
 	public GetCurrentFunction(PluginTool tool) {
-		super(tool, "/get_current_function");
-	}
-
-	/**
-	 * Handles the HTTP request to get the current function.
-	 *
-	 * @param exchange The HTTP exchange containing the request and response.
-	 * @throws IOException If an I/O error occurs during handling.
-	 */
-	@Override
-	public void handle(HttpExchange exchange) throws IOException {
-		Map<String, String> qparams = parseQueryParams(exchange);
-		String programName = qparams.get("program");
-		sendResponse(exchange, getCurrentFunction(programName));
+		super(tool);
 	}
 
 	/**
@@ -47,18 +34,20 @@ public final class GetCurrentFunction extends Handler {
 	 * @return A string containing the function name, entry point, and signature,
 	 *         or an error message if no function is found or if there are issues.
 	 */
-	private String getCurrentFunction(String programName) {
-		CodeViewerService service = tool.getService(CodeViewerService.class);
+	@HttpRoute(method = HttpMethod.GET, path = "/get_current_function")
+    @McpTool(name = "get_current_function", description = "Get the function currently selected by the user")
+	public String getCurrentFunction(@Param(name="program", nullable=true) String programName) {
+		Program program = getProgramByName(programName);
+		if (program == null)
+			return "No program loaded";
+		
+		CodeViewerService service = GhidraUtils.resolveService(tool, program, CodeViewerService.class);
 		if (service == null)
 			return "Code viewer service not available";
 
 		ProgramLocation location = service.getCurrentLocation();
 		if (location == null)
 			return "No current location";
-
-		Program program = getProgramByName(programName);
-		if (program == null)
-			return "No program loaded";
 
 		Function func = program.getFunctionManager().getFunctionContaining(location.getAddress());
 		if (func == null)

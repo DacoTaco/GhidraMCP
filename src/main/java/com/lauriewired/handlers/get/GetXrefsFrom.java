@@ -1,7 +1,16 @@
 package com.lauriewired.handlers.get;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.eclipse.jetty.http.HttpMethod;
+
 import com.lauriewired.handlers.Handler;
-import com.sun.net.httpserver.HttpExchange;
+import com.lauriewired.http.HttpRoute;
+import com.lauriewired.http.Param;
+import com.lauriewired.mcp.McpTool;
+import static com.lauriewired.util.ParseUtils.paginateList;
+
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Data;
@@ -11,12 +20,6 @@ import ghidra.program.model.symbol.RefType;
 import ghidra.program.model.symbol.Reference;
 import ghidra.program.model.symbol.ReferenceManager;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
-import static com.lauriewired.util.ParseUtils.*;
-
 /** Handler for getting cross-references from a specific address */
 public final class GetXrefsFrom extends Handler {
 	/**
@@ -25,23 +28,7 @@ public final class GetXrefsFrom extends Handler {
 	 * @param tool The PluginTool instance to use for accessing the current program.
 	 */
 	public GetXrefsFrom(PluginTool tool) {
-		super(tool, "/xrefs_from");
-	}
-
-	/**
-	 * Handles the HTTP request to get cross-references from a specific address.
-	 * 
-	 * @param exchange The HttpExchange object containing the request and response.
-	 * @throws Exception If an error occurs while processing the request.
-	 */
-	@Override
-	public void handle(HttpExchange exchange) throws Exception {
-		Map<String, String> qparams = parseQueryParams(exchange);
-		String address = qparams.get("address");
-		int offset = parseIntOrDefault(qparams.get("offset"), 0);
-		int limit = parseIntOrDefault(qparams.get("limit"), 100);
-		String programName = qparams.get("program");
-		sendResponse(exchange, getXrefsFrom(programName, address, offset, limit));
+		super(tool);
 	}
 
 	/**
@@ -52,12 +39,16 @@ public final class GetXrefsFrom extends Handler {
 	 * @param limit      The maximum number of references to return.
 	 * @return A string containing the references or an error message.
 	 */
-	private String getXrefsFrom(String programName, String addressStr, int offset, int limit) {
+	@HttpRoute(method = HttpMethod.GET, path = "/xrefs_from")
+    @McpTool(name = "get_xrefs_from", description = "Get all references from the specified address (xref from)")
+	public String getXrefsFrom(@Param(name = "program", nullable = true) String programName, @Param(name = "address") String addressStr,
+            				   @Param(name = "offset", nullable = true) Integer offset, @Param(name = "limit", nullable = true) Integer limit) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
-		if (addressStr == null || addressStr.isEmpty())
-			return "Address is required";
+
+		offset = (offset == null) ? 0 : offset;
+        limit = (limit == null) ? 100 : limit;
 
 		try {
 			Address addr = program.getAddressFactory().getAddress(addressStr);

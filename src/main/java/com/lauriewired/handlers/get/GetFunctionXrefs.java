@@ -1,7 +1,16 @@
 package com.lauriewired.handlers.get;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.eclipse.jetty.http.HttpMethod;
+
 import com.lauriewired.handlers.Handler;
-import com.sun.net.httpserver.HttpExchange;
+import com.lauriewired.http.HttpRoute;
+import com.lauriewired.http.Param;
+import com.lauriewired.mcp.McpTool;
+import static com.lauriewired.util.ParseUtils.paginateList;
+
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Function;
@@ -11,36 +20,13 @@ import ghidra.program.model.symbol.RefType;
 import ghidra.program.model.symbol.Reference;
 import ghidra.program.model.symbol.ReferenceIterator;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
-import static com.lauriewired.util.ParseUtils.*;
-
 /**
  * Handler to get all references to a specific function by name.
  * Expects query parameters: name, offset, limit
  */
 public final class GetFunctionXrefs extends Handler {
 	public GetFunctionXrefs(PluginTool tool) {
-		super(tool, "/function_xrefs");
-	}
-
-	/**
-	 * Handles the HTTP request to get function cross-references.
-	 * Expects query parameters: name, offset, limit
-	 * 
-	 * @param exchange the HTTP exchange containing the request
-	 * @throws Exception if an error occurs while processing the request
-	 */
-	@Override
-	public void handle(HttpExchange exchange) throws Exception {
-		Map<String, String> qparams = parseQueryParams(exchange);
-		String name = qparams.get("name");
-		int offset = parseIntOrDefault(qparams.get("offset"), 0);
-		int limit = parseIntOrDefault(qparams.get("limit"), 100);
-		String programName = qparams.get("program");
-		sendResponse(exchange, getFunctionXrefs(name, offset, limit, programName));
+		super(tool);
 	}
 
 	/**
@@ -51,12 +37,19 @@ public final class GetFunctionXrefs extends Handler {
 	 * @param limit        the maximum number of results to return
 	 * @return a string containing the references or an error message
 	 */
-	private String getFunctionXrefs(String functionName, int offset, int limit, String programName) {
+	@HttpRoute(method = HttpMethod.GET, path = "/function_xrefs")
+    @McpTool(name = "function_xrefs", description = "Get all references to the specified function by name")
+    public String getFunctionXrefs(@Param(name = "program", nullable=true) String programName, @Param(name = "name") String functionName,
+            @Param(name = "offset", nullable = true) Integer offset, @Param(name = "limit", nullable = true) Integer limit
+    ) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
 		if (functionName == null || functionName.isEmpty())
 			return "Function name is required";
+
+		offset = (offset == null) ? 0 : offset;
+        limit = (limit == null) ? 100 : limit;
 
 		try {
 			List<String> refs = new ArrayList<>();

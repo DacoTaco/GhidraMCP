@@ -1,20 +1,21 @@
 package com.lauriewired.handlers.act;
 
+import java.util.concurrent.atomic.AtomicReference;
+
+import javax.swing.SwingUtilities;
+
+import org.eclipse.jetty.http.HttpMethod;
+
 import com.lauriewired.handlers.Handler;
-import com.sun.net.httpserver.HttpExchange;
+import com.lauriewired.http.HttpRoute;
+import com.lauriewired.http.Param;
+import com.lauriewired.mcp.McpTool;
+
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.BookmarkManager;
-import ghidra.program.model.listing.BookmarkType;
 import ghidra.program.model.listing.Program;
 
-import javax.swing.*;
-import java.io.IOException;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
-
-import static com.lauriewired.util.ParseUtils.parsePostParams;
-import static com.lauriewired.util.ParseUtils.sendResponse;
 
 /**
  * Handler for POST requests to add a bookmark at a specific address.
@@ -26,41 +27,23 @@ public class AddBookmark extends Handler {
 	 * @param tool the plugin tool
 	 */
 	public AddBookmark(PluginTool tool) {
-		super(tool, "/add_bookmark");
+		super(tool);
 	}
 
-	/**
-	 * Handles the HTTP exchange to add a bookmark.
-	 *
-	 * @param exchange the HTTP exchange
-	 * @throws IOException
-	 */
-	@Override
-	public void handle(HttpExchange exchange) throws IOException {
-		if (!"POST".equals(exchange.getRequestMethod())) {
-			sendResponse(exchange, "Unsupported method");
-			return;
-		}
-
-		Map<String, String> params = parsePostParams(exchange);
-		String addressStr = params.get("address");
-		String category = params.get("category");
-		String comment = params.get("comment");
-		String type = params.get("type");
-
-		if (addressStr == null || category == null || comment == null || type == null) {
-			sendResponse(exchange, "Missing required parameters: address, category, comment, type");
-			return;
-		}
-
-		sendResponse(exchange, addBookmark(params.get("program"), addressStr, category, comment, type));
-	}
-
-	private String addBookmark(String programName, String addressStr, String category, String comment, String type) {
+    @McpTool(
+        name = "add_bookmark",
+        description = """
+            Creates a bookmark at the specified address.
+            If a bookmark of the same type already exists, it will be replaced.
+            """
+    )
+    @HttpRoute(method = HttpMethod.POST, path = "/add_bookmark")
+	public String addBookmark(@Param(name="program", nullable=true) String programName, @Param(name="address") String addressStr, 
+                               @Param(name="category") String category, @Param(name="comment") String comment,
+                               @Param(name="type") String type) {
 		Program currentProgram = getProgramByName(programName);
-		if (currentProgram == null) {
+		if (currentProgram == null)
 			return "No active program";
-		}
 
 		final AtomicReference<String> result = new AtomicReference<>();
 		try {

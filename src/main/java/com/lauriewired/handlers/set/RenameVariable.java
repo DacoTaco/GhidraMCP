@@ -1,8 +1,21 @@
 package com.lauriewired.handlers.set;
 
+import java.lang.reflect.InvocationTargetException;
+import java.util.Iterator;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import javax.swing.SwingUtilities;
+
+import org.eclipse.jetty.http.HttpMethod;
+
 import com.lauriewired.handlers.Handler;
-import com.sun.net.httpserver.HttpExchange;
-import ghidra.app.decompiler.*;
+import com.lauriewired.http.HttpRoute;
+import com.lauriewired.http.Param;
+import com.lauriewired.mcp.McpTool;
+
+import ghidra.app.decompiler.DecompInterface;
+import ghidra.app.decompiler.DecompileOptions;
+import ghidra.app.decompiler.DecompileResults;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Parameter;
@@ -16,16 +29,6 @@ import ghidra.program.model.symbol.SourceType;
 import ghidra.util.Msg;
 import ghidra.util.task.ConsoleTaskMonitor;
 
-import javax.swing.*;
-import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import static com.lauriewired.util.ParseUtils.parsePostParams;
-import static com.lauriewired.util.ParseUtils.sendResponse;
-
 /**
  * Handler for renaming a variable in a function.
  * Expects POST parameters: functionName, oldName, newName.
@@ -38,26 +41,8 @@ public final class RenameVariable extends Handler {
 	 * @param tool the PluginTool instance
 	 */
 	public RenameVariable(PluginTool tool) {
-		super(tool, "/renameVariable");
+		super(tool);
 	}
-
-	/**
-	 * Handles the HTTP request to rename a variable in a function.
-	 * 
-	 * @param exchange the HttpExchange object containing the request
-	 * @throws IOException if an I/O error occurs
-	 */
-	@Override
-	public void handle(HttpExchange exchange) throws IOException {
-		Map<String, String> params = parsePostParams(exchange);
-		String functionName = params.get("functionName");
-		String oldName = params.get("oldName");
-		String newName = params.get("newName");
-		String programName = params.get("program");
-		String result = renameVariableInFunction(functionName, oldName, newName, programName);
-		sendResponse(exchange, result);
-	}
-
 	/**
 	 * Renames a variable in the specified function.
 	 * 
@@ -66,7 +51,10 @@ public final class RenameVariable extends Handler {
 	 * @param newVarName   the new name for the variable
 	 * @return a message indicating success or failure
 	 */
-	private String renameVariableInFunction(String functionName, String oldVarName, String newVarName, String programName) {
+	@HttpRoute(method=HttpMethod.POST, path="/renameVariable")
+	@McpTool(name="rename_variable", description="Rename a local variable within a function.")
+	public String renameVariableInFunction(@Param(name="functionName") String functionName, @Param(name="oldName") String oldVarName, 
+										   @Param(name="newName") String newVarName, @Param(name="newName", nullable=true) String programName) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";

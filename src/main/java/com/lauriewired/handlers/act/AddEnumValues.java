@@ -1,24 +1,24 @@
 package com.lauriewired.handlers.act;
 
+import java.lang.reflect.InvocationTargetException;
+import java.util.concurrent.atomic.AtomicReference;
+
+import javax.swing.SwingUtilities;
+
+import org.eclipse.jetty.http.HttpMethod;
+
 import com.lauriewired.handlers.Handler;
-import com.sun.net.httpserver.HttpExchange;
+import com.lauriewired.http.HttpRoute;
+import com.lauriewired.http.Param;
+import com.lauriewired.mcp.McpTool;
+import com.lauriewired.util.EnumUtils.EnumValue;
+
 import ghidra.framework.plugintool.PluginTool;
+import ghidra.program.model.data.CategoryPath;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.Enum;
 import ghidra.program.model.listing.Program;
-
-import com.google.gson.Gson;
-
-import javax.swing.SwingUtilities;
-import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
-
-import static com.lauriewired.util.ParseUtils.*;
-import static com.lauriewired.util.EnumUtils.EnumValue;
-import ghidra.program.model.data.CategoryPath;
 
 /**
  * Handler for adding values to an enum in Ghidra.
@@ -37,30 +37,9 @@ public final class AddEnumValues extends Handler {
 	 * @param tool The Ghidra plugin tool instance.
 	 */
 	public AddEnumValues(PluginTool tool) {
-		super(tool, "/add_enum_values");
+		super(tool);
 	}
-
-	/**
-	 * Handles the HTTP request to add values to an enum.
-	 *
-	 * @param exchange The HTTP exchange containing the request and response.
-	 * @throws IOException If an I/O error occurs during handling.
-	 */
-	@Override
-	public void handle(HttpExchange exchange) throws IOException {
-		Map<String, String> params = parsePostParams(exchange);
-		String enumName = params.get("enum_name");
-		String category = params.get("category");
-		String valuesJson = params.get("values");
-		String programName = params.get("program");
-
-		if (enumName == null || valuesJson == null) {
-			sendResponse(exchange, "enum_name and values are required");
-			return;
-		}
-		sendResponse(exchange, addEnumValues(programName, enumName, category, valuesJson));
-	}
-
+	
 	/**
 	 * Adds values to an enum in the current Ghidra program.
 	 *
@@ -69,7 +48,10 @@ public final class AddEnumValues extends Handler {
 	 * @param valuesJson JSON array of values to add.
 	 * @return A message indicating success or failure.
 	 */
-	private String addEnumValues(String programName, String enumName, String category, String valuesJson) {
+	@HttpRoute(method = HttpMethod.POST, path = "/add_enum_values")
+	@McpTool(name = "add_enum_values", description = "Add values to an existing enum.")
+	public String addEnumValues(@Param(name = "program", nullable = true) String programName, @Param(name = "enum_name") String enumName, 
+								 @Param(name = "category", nullable = true) String category, @Param(name = "values") EnumValue[] values) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
@@ -92,9 +74,7 @@ public final class AddEnumValues extends Handler {
 
 					StringBuilder responseBuilder = new StringBuilder();
 
-					if (valuesJson != null && !valuesJson.isEmpty()) {
-						Gson gson = new Gson();
-						EnumValue[] values = gson.fromJson(valuesJson, EnumValue[].class);
+					if (values != null ) {
 
 						int valuesAdded = 0;
 						for (EnumValue enumValue : values) {

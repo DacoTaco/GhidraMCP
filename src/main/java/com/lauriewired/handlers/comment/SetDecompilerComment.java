@@ -1,15 +1,15 @@
 package com.lauriewired.handlers.comment;
 
+import org.eclipse.jetty.http.HttpMethod;
+
 import com.lauriewired.handlers.Handler;
-import com.sun.net.httpserver.HttpExchange;
+import com.lauriewired.http.HttpRoute;
+import com.lauriewired.http.Param;
+import com.lauriewired.mcp.McpTool;
+import static com.lauriewired.util.GhidraUtils.setCommentAtAddress;
+
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.listing.CommentType;
-
-import java.util.Map;
-
-import static com.lauriewired.util.GhidraUtils.setCommentAtAddress;
-import static com.lauriewired.util.ParseUtils.parsePostParams;
-import static com.lauriewired.util.ParseUtils.sendResponse;
 
 /**
  * Handler for setting a decompiler comment in Ghidra
@@ -22,23 +22,19 @@ public final class SetDecompilerComment extends Handler {
 	 * @param tool The Ghidra PluginTool instance
 	 */
 	public SetDecompilerComment(PluginTool tool) {
-		super(tool, "/set_decompiler_comment");
+		super(tool);
 	}
 
-	/**
-	 * Handles HTTP POST requests to set a decompiler comment
-	 * 
-	 * @param exchange The HTTP exchange containing the request and response
-	 * @throws Exception If an error occurs while processing the request
-	 */
-	@Override
-	public void handle(HttpExchange exchange) throws Exception {
-		Map<String, String> params = parsePostParams(exchange);
-		String address = params.get("address");
-		String comment = params.get("comment");
-		String programName = params.get("program");
-		boolean success = setDecompilerComment(programName, address, comment);
-		sendResponse(exchange, success ? "Comment set successfully" : "Failed to set comment");
+	@HttpRoute(method=HttpMethod.POST, path = "/set_decompiler_comment")
+	@McpTool(name="set_decompiler_comment", description="Set a comment for a given address in the function pseudocode.")
+	public String setDecompilerCommentRoute(
+		@Param(name = "address") String address,
+		@Param(name = "comment") String comment,
+		@Param(name = "program", nullable = true) String program
+	) {
+		return setDecompilerComment(program, address, comment)
+			? "Comment set successfully"
+			: "Failed to set comment";
 	}
 
 	/**

@@ -1,8 +1,22 @@
 package com.lauriewired.handlers.set;
 
+import java.lang.reflect.InvocationTargetException;
+import java.util.Iterator;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import javax.swing.SwingUtilities;
+
+import org.eclipse.jetty.http.HttpMethod;
+
 import com.lauriewired.handlers.Handler;
-import com.sun.net.httpserver.HttpExchange;
-import ghidra.app.decompiler.*;
+import com.lauriewired.http.HttpRoute;
+import com.lauriewired.http.Param;
+import com.lauriewired.mcp.McpTool;
+import static com.lauriewired.util.GhidraUtils.resolveDataType;
+
+import ghidra.app.decompiler.DecompInterface;
+import ghidra.app.decompiler.DecompileOptions;
+import ghidra.app.decompiler.DecompileResults;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataType;
@@ -16,15 +30,6 @@ import ghidra.program.model.symbol.SourceType;
 import ghidra.util.Msg;
 import ghidra.util.task.ConsoleTaskMonitor;
 
-import javax.swing.*;
-import java.lang.reflect.InvocationTargetException;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import static com.lauriewired.util.GhidraUtils.resolveDataType;
-import static com.lauriewired.util.ParseUtils.*;
-
 /**
  * Handler for setting the type of a local variable in a function.
  * This handler allows users to specify a function address, variable name,
@@ -37,23 +42,13 @@ public final class SetLocalVariableType extends Handler {
 	 * @param tool The PluginTool instance to use for accessing the current program.
 	 */
 	public SetLocalVariableType(PluginTool tool) {
-		super(tool, "/set_local_variable_type");
+		super(tool);
 	}
 
-	/**
-	 * Handles the HTTP request to set a local variable's type.
-	 * 
-	 * @param exchange The HttpExchange object containing the request and response.
-	 * @throws Exception If an error occurs while processing the request.
-	 */
-	@Override
-	public void handle(HttpExchange exchange) throws Exception {
-		Map<String, String> params = parsePostParams(exchange);
-		String functionAddress = params.get("function_address");
-		String variableName = params.get("variable_name");
-		String newType = params.get("new_type");
-		String programName = params.get("program");
-
+	@HttpRoute(method=HttpMethod.POST, path="/set_local_variable_type")
+	@McpTool(name="set_local_variable_type", description="Set a local variable's type.")
+	public String handleRequest(@Param(name="function_address") String functionAddress, @Param(name="variable_name") String variableName, 
+								@Param(name="new_type") String newType, @Param(name="program") String programName) {
 		// Capture detailed information about setting the type
 		StringBuilder responseMsg = new StringBuilder();
 		responseMsg.append("Setting variable type: ").append(variableName)
@@ -86,7 +81,7 @@ public final class SetLocalVariableType extends Handler {
 		String successMsg = success ? "Variable type set successfully" : "Failed to set variable type";
 		responseMsg.append("\nResult: ").append(successMsg);
 
-		sendResponse(exchange, responseMsg.toString());
+		return responseMsg.toString();
 	}
 
 	/**
@@ -173,7 +168,7 @@ public final class SetLocalVariableType extends Handler {
 
 			// Find the data type
 			DataTypeManager dtm = program.getDataTypeManager();
-			DataType dataType = resolveDataType(tool, dtm, newType);
+			DataType dataType = resolveDataType(tool, program, dtm, newType);
 
 			if (dataType == null) {
 				Msg.error(this, "Could not resolve data type: " + newType);

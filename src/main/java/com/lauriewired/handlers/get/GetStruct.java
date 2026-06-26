@@ -1,21 +1,25 @@
 package com.lauriewired.handlers.get;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.eclipse.jetty.http.HttpMethod;
+
+import com.google.gson.Gson;
 import com.lauriewired.handlers.Handler;
-import com.sun.net.httpserver.HttpExchange;
+import com.lauriewired.http.HttpRoute;
+import com.lauriewired.http.Param;
+import com.lauriewired.mcp.McpTool;
+
 import ghidra.framework.plugintool.PluginTool;
+import ghidra.program.model.data.CategoryPath;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeComponent;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.Structure;
 import ghidra.program.model.listing.Program;
-
-import com.google.gson.Gson;
-
-import java.io.IOException;
-import java.util.*;
-
-import static com.lauriewired.util.ParseUtils.*;
-import ghidra.program.model.data.CategoryPath;
 
 /**
  * Handler for retrieving details of a structure by its name and category.
@@ -28,26 +32,7 @@ public final class GetStruct extends Handler {
 	 * @param tool the PluginTool instance to use for accessing the current program.
 	 */
 	public GetStruct(PluginTool tool) {
-		super(tool, "/get_struct");
-	}
-
-	/**
-	 * Handles the HTTP request to retrieve structure details.
-	 *
-	 * @param exchange the HttpExchange object containing the request and response.
-	 * @throws IOException if an I/O error occurs during handling.
-	 */
-	@Override
-	public void handle(HttpExchange exchange) throws IOException {
-		Map<String, String> qparams = parseQueryParams(exchange);
-		String structName = qparams.get("name");
-		String category = qparams.get("category");
-		String programName = qparams.get("program");
-		if (structName == null) {
-			sendResponse(exchange, "name is required");
-			return;
-		}
-		sendResponse(exchange, getStruct(structName, category, programName));
+		super(tool);
 	}
 
 	/**
@@ -59,7 +44,9 @@ public final class GetStruct extends Handler {
 	 * @return a JSON representation of the structure or an error message if not
 	 *         found.
 	 */
-	private String getStruct(String structName, String category, String programName) {
+	@HttpRoute(method = HttpMethod.GET, path = "/get_struct")
+    @McpTool(name = "get_struct", description = "Get a struct's definition by name and optional category")
+	public String getStruct(@Param(name = "name") String structName, @Param(name = "category", nullable=true) String category, @Param(name = "program", nullable=true) String programName) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";

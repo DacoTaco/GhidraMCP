@@ -1,17 +1,19 @@
 package com.lauriewired.handlers.get;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.eclipse.jetty.http.HttpMethod;
+
 import com.lauriewired.handlers.Handler;
-import com.sun.net.httpserver.HttpExchange;
+import com.lauriewired.http.HttpRoute;
+import com.lauriewired.http.Param;
+import com.lauriewired.mcp.McpTool;
+import static com.lauriewired.util.ParseUtils.paginateList;
+
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.MemoryBlock;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
-import static com.lauriewired.util.ParseUtils.*;
 
 /**
  * Handler for listing memory segments in the current program.
@@ -24,24 +26,7 @@ public final class ListSegments extends Handler {
 	 * @param tool the PluginTool instance to use for accessing the current program.
 	 */
 	public ListSegments(PluginTool tool) {
-		super(tool, "/segments");
-	}
-
-	/**
-	 * Handles the HTTP request to list memory segments.
-	 * Expects query parameters 'offset' and 'limit' for pagination.
-	 *
-	 * @param exchange the HttpExchange instance containing the request and
-	 *                 response.
-	 * @throws IOException if an I/O error occurs during handling.
-	 */
-	@Override
-	public void handle(HttpExchange exchange) throws IOException {
-		Map<String, String> qparams = parseQueryParams(exchange);
-		int offset = parseIntOrDefault(qparams.get("offset"), 0);
-		int limit = parseIntOrDefault(qparams.get("limit"), 100);
-		String programName = qparams.get("program");
-		sendResponse(exchange, listSegments(programName, offset, limit));
+		super(tool);
 	}
 
 	/**
@@ -52,11 +37,15 @@ public final class ListSegments extends Handler {
 	 * @return a string representation of the memory segments, formatted for
 	 *         pagination.
 	 */
-	private String listSegments(String programName, int offset, int limit) {
+	@HttpRoute(method = HttpMethod.GET, path = "/segments")
+    @McpTool(name = "list_segments", description = "List all memory segments in the program with pagination.")
+	public String listSegments(@Param(name = "program", nullable = true) String programName, @Param(name = "offset", nullable = true) Integer offset, @Param(name = "limit", nullable = true) Integer limit) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
 
+		offset = (offset == null) ? 0 : offset;
+        limit = (limit == null) ? 100 : limit;
 		List<String> lines = new ArrayList<>();
 		for (MemoryBlock block : program.getMemory().getBlocks()) {
 			lines.add(String.format("%s: %s - %s", block.getName(), block.getStart(), block.getEnd()));

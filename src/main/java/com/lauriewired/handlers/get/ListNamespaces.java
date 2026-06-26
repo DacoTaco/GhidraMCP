@@ -1,17 +1,24 @@
 package com.lauriewired.handlers.get;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import org.eclipse.jetty.http.HttpMethod;
+
 import com.lauriewired.handlers.Handler;
-import com.sun.net.httpserver.HttpExchange;
+import com.lauriewired.http.HttpRoute;
+import com.lauriewired.http.Param;
+import com.lauriewired.mcp.McpTool;
+import static com.lauriewired.util.ParseUtils.paginateList;
+
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.address.GlobalNamespace;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.Namespace;
 import ghidra.program.model.symbol.Symbol;
-
-import java.io.IOException;
-import java.util.*;
-
-import static com.lauriewired.util.ParseUtils.*;
 
 /**
  * Handler for listing namespaces in the current program.
@@ -26,21 +33,7 @@ public final class ListNamespaces extends Handler {
 	 * @param tool the PluginTool instance
 	 */
 	public ListNamespaces(PluginTool tool) {
-		super(tool, "/namespaces");
-	}
-
-	/**
-	 * Handles the HTTP request to list namespaces.
-	 *
-	 * @param exchange the HttpExchange instance containing the request
-	 * @throws IOException if an I/O error occurs
-	 */
-	@Override
-	public void handle(HttpExchange exchange) throws IOException {
-		Map<String, String> qparams = parseQueryParams(exchange);
-		int offset = parseIntOrDefault(qparams.get("offset"), 0);
-		int limit = parseIntOrDefault(qparams.get("limit"), 100);
-		sendResponse(exchange, listNamespaces(qparams.get("program"), offset, limit));
+		super(tool);
 	}
 
 	/**
@@ -50,11 +43,15 @@ public final class ListNamespaces extends Handler {
 	 * @param limit  the maximum number of namespaces to return
 	 * @return a string representation of the paginated list of namespaces
 	 */
-	private String listNamespaces(String programName, int offset, int limit) {
+	@HttpRoute(method = HttpMethod.GET, path = "/namespaces")
+    @McpTool(name = "list_namespaces", description = "List all non-global namespaces in the program with pagination.")
+	public String listNamespaces(@Param(name = "program", nullable = true) String programName, @Param(name = "offset", nullable = true) Integer offset, @Param(name = "limit", nullable = true) Integer limit) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
 
+		offset = (offset == null) ? 0 : offset;
+        limit = (limit == null) ? 100 : limit;
 		Set<String> namespaces = new HashSet<>();
 		for (Symbol symbol : program.getSymbolTable().getAllSymbols(true)) {
 			Namespace ns = symbol.getParentNamespace();

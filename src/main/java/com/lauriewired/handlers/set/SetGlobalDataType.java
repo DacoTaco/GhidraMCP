@@ -2,6 +2,7 @@ package com.lauriewired.handlers.set;
 
 import com.lauriewired.handlers.Handler;
 import com.sun.net.httpserver.HttpExchange;
+
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataType;
@@ -14,11 +15,17 @@ import ghidra.program.model.listing.Program;
 import ghidra.util.Msg;
 
 import javax.swing.SwingUtilities;
+
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.eclipse.jetty.http.HttpMethod;
+
+import com.lauriewired.http.HttpRoute;
+import com.lauriewired.http.Param;
+import com.lauriewired.mcp.McpTool;
 import static com.lauriewired.util.GhidraUtils.resolveDataType;
 import static com.lauriewired.util.ParseUtils.*;
 
@@ -40,35 +47,15 @@ public final class SetGlobalDataType extends Handler {
 	 * @param tool The PluginTool instance to use for accessing the current program.
 	 */
 	public SetGlobalDataType(PluginTool tool) {
-		super(tool, "/set_global_data_type");
+		super(tool);
 	}
 
-	/**
-	 * Handles the HTTP request to set a global data type at a specific address.
-	 * 
-	 * @param exchange The HttpExchange object containing the request and response.
-	 * @throws IOException If an I/O error occurs during handling.
-	 */
-	@Override
-	public void handle(HttpExchange exchange) throws IOException {
-		Map<String, String> params = parsePostParams(exchange);
-		String addressStr = params.get("address");
-		String dataTypeName = params.get("data_type");
-		String lengthStr = params.get("length");
-		String clearModeStr = params.get("clear_mode");
-		String programName = params.get("program");
+	@HttpRoute(method=HttpMethod.POST, path="/set_global_data_type")
+	@McpTool(name="set_global_data_type", description="Set the data type of a global variable or data at a specific memory address.")
+	public String handleRequest(@Param(name="address") String addressStr, @Param(name="data_type") String dataTypeName, @Param(name="lenght", nullable=true) Integer length,
+							  @Param(name="clear_mode") String clearModeStr, @Param(name="program", nullable=true) String programName){
+		length = length == null ? -1 : length;
 
-		if (addressStr == null || addressStr.isEmpty()) {
-			sendResponse(exchange, "Error: address parameter is required");
-			return;
-		}
-
-		if (dataTypeName == null || dataTypeName.isEmpty()) {
-			sendResponse(exchange, "Error: data_type parameter is required");
-			return;
-		}
-
-		int length = parseIntOrDefault(lengthStr, -1);
 		ClearDataMode clearMode = parseClearDataMode(clearModeStr);
 
 		// Capture detailed information about setting the data type
@@ -84,7 +71,7 @@ public final class SetGlobalDataType extends Handler {
 		Program program = getProgramByName(programName);
 		if (program != null) {
 			DataTypeManager dtm = program.getDataTypeManager();
-			DataType dataType = resolveDataType(tool, dtm, dataTypeName);
+			DataType dataType = resolveDataType(tool, program, dtm, dataTypeName);
 			if (dataType != null) {
 				responseMsg.append("Found data type: ").append(dataType.getPathName()).append("\n");
 			} else {
@@ -96,7 +83,7 @@ public final class SetGlobalDataType extends Handler {
 		String result = setGlobalDataType(addressStr, dataTypeName, length, clearMode, programName);
 		responseMsg.append("\nResult: ").append(result);
 
-		sendResponse(exchange, responseMsg.toString());
+		return responseMsg.toString();
 	}
 
 	/**
@@ -129,7 +116,7 @@ public final class SetGlobalDataType extends Handler {
 
 					// Resolve the data type
 					DataTypeManager dtm = program.getDataTypeManager();
-					DataType dataType = resolveDataType(tool, dtm, dataTypeName);
+					DataType dataType = resolveDataType(tool, program, dtm, dataTypeName);
 					if (dataType == null) {
 						result.set("Error: Could not resolve data type: " + dataTypeName);
 						return;

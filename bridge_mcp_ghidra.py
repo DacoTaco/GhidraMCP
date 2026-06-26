@@ -195,11 +195,11 @@ def get_current_address() -> str:
     return "\n".join(safe_get("get_current_address"))
 
 @mcp.tool()
-def get_current_function() -> str:
+def get_current_function(program: str = None) -> str:
     """
-    Get the function currently selected by the user.
+    Get the function currently selected by the user
     """
-    return "\n".join(safe_get("get_current_function"))
+    return "\n".join(safe_get("get_current_function", _with_program({}, program)))
 
 @mcp.tool()
 def list_functions(program: str = "") -> list:
@@ -306,7 +306,7 @@ def get_function_xrefs(name: str, offset: int = 0, limit: int = 100, program: st
     return safe_get("function_xrefs", _with_program({"name": name, "offset": offset, "limit": limit}, program))
 
 @mcp.tool()
-def list_strings(offset: int = 0, limit: int = 2000, filter: str = None, program: str = "") -> list:
+def list_strings(offset: int = 0, limit: int = 100, filter: str = None, program: str = "") -> list:
     """
     List all defined strings in the program with their addresses.
 
@@ -373,7 +373,7 @@ def add_struct_members(struct_name: str, members: list, category: str = None) ->
     return safe_post("add_struct_members", data)
 
 @mcp.tool()
-def clear_struct(struct_name: str, category: str = None) -> str:
+def clear_struct(struct_name: str, category: str = None, program: str = None) -> str:
     """
     Remove all members from a structure.
     
@@ -387,7 +387,7 @@ def clear_struct(struct_name: str, category: str = None) -> str:
     data = {"struct_name": struct_name}
     if category:
         data["category"] = category
-    return safe_post("clear_struct", data)
+    return safe_post("clear_struct", _with_program(data, program))
 
 @mcp.tool()
 def get_struct(name: str, category: str = None) -> dict:
@@ -416,19 +416,19 @@ def get_struct(name: str, category: str = None) -> dict:
         return {"error": response_str}
 
 @mcp.tool()
-def get_data_by_label(label: str) -> str:
+def get_data_by_label(label: str, program: str = None) -> str:
     """
-    Get information about a data label.
+    Get information about a data label in a program.
 
     Args:
-        label: Exact symbol / label name to look up in the program.
+        program: Program name to query.
+        label: Exact symbol / label name.
 
     Returns:
-        A newline-separated string.  
-        Each line has:  "<label> -> <address> : <value-representation>"
-        If the label is not found, an explanatory message is returned.
+        Newline-separated lines:
+        "<label> -> <address> : <value-representation>"
     """
-    return "\n".join(safe_get("get_data_by_label", {"label": label}))
+    return "\n".join(safe_get("get_data_by_label", _with_program({"label": label}, program)))
 
 @mcp.tool()
 def get_bytes(address: str, size: int = 1) -> str:
@@ -510,30 +510,32 @@ def add_enum_values(enum_name: str, values: list, category: str = None) -> str:
         data["category"] = category
     return safe_post("add_enum_values", data)
 
+import json
+
 @mcp.tool()
-def get_enum(name: str, category: str = None) -> dict:
+def get_enum(name: str, program: str = None, category: str = None) -> dict:
     """
-    Get an enum's definition.
-    
+    Get an enum's definition from a program.
+
     Args:
+        program: Program name to query.
         name: The name of the enum.
-        category: The category path for the enum. Defaults to root.
-        
+        category: The category path for the enum (defaults to root).
+
     Returns:
-        A dictionary representing the enum, or an error message.
+        A dictionary representing the enum, or:
+        {"error": "..."}
     """
     params = {"name": name}
     if category:
         params["category"] = category
 
-    response_lines = safe_get("get_enum", params)
+    response_lines = safe_get("get_enum", _with_program(params, program))
     response_str = "\n".join(response_lines)
 
     try:
-        # Attempt to parse the JSON response
         return json.loads(response_str)
     except json.JSONDecodeError:
-        # If it's not JSON, it's likely an error message
         return {"error": response_str}
 
 @mcp.tool()
@@ -680,17 +682,18 @@ def add_bookmark(address: str, category: str, comment: str, type: str = "Note") 
     return safe_post("add_bookmark", {"address": address, "category": category, "comment": comment, "type": type, "format": "json"})
 
 @mcp.tool()
-def get_callee(address: str) -> list:
+def get_callee(address: str, program: str = None) -> list:
     """
     Get the functions called by the function at the specified address.
     
     Args:
+        program: The program name in which to resolve the address.
         address: The address within the function.
         
     Returns:
         A list of called functions.
     """
-    lines = safe_get("get_callee", {"address": address})
+    lines = safe_get("get_callee", {"address": address, "program": program})
     # Try to parse JSON array if the bridge returned structured output
     try:
         body = "\n".join(lines).strip()

@@ -1,7 +1,17 @@
 package com.lauriewired.handlers.set;
 
+import java.lang.reflect.InvocationTargetException;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import javax.swing.SwingUtilities;
+
+import org.eclipse.jetty.http.HttpMethod;
+
 import com.lauriewired.handlers.Handler;
-import com.sun.net.httpserver.HttpExchange;
+import com.lauriewired.http.HttpRoute;
+import com.lauriewired.http.Param;
+import com.lauriewired.mcp.McpTool;
+
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataTypeManager;
@@ -11,14 +21,6 @@ import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.SourceType;
 import ghidra.util.Msg;
 import ghidra.util.task.ConsoleTaskMonitor;
-
-import javax.swing.*;
-import java.lang.reflect.InvocationTargetException;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import static com.lauriewired.util.ParseUtils.parsePostParams;
-import static com.lauriewired.util.ParseUtils.sendResponse;
  
 
 /**
@@ -33,13 +35,13 @@ public final class SetFunctionPrototype extends Handler {
 	 * @param tool The Ghidra plugin tool instance
 	 */
 	public SetFunctionPrototype(PluginTool tool) {
-		super(tool, "/set_function_prototype");
+		super(tool);
 	}
 
 	/**
 	 * Result class to encapsulate success/failure and error messages
 	 */
-	private static class PrototypeResult {
+	public static class PrototypeResult {
 		/** Indicates if the prototype was set successfully */
 		private final boolean success;
 
@@ -75,42 +77,15 @@ public final class SetFunctionPrototype extends Handler {
 	}
 
 	/**
-	 * Handle the HTTP request to set a function prototype
-	 *
-	 * @param exchange The HTTP exchange containing the request and response
-	 * @throws Exception If an error occurs during processing
-	 */
-	@Override
-	public void handle(HttpExchange exchange) throws Exception {
-		Map<String, String> params = parsePostParams(exchange);
-		String functionAddress = params.get("function_address");
-		String prototype = params.get("prototype");
-		String programName = params.get("program");
-
-		// Call the set prototype function and get detailed result
-		PrototypeResult result = setFunctionPrototype(functionAddress, prototype, programName);
-
-		if (result.isSuccess()) {
-			// Even with successful operations, include any warning messages for debugging
-			String successMsg = "Function prototype set successfully";
-			if (!result.getErrorMessage().isEmpty()) {
-				successMsg += "\n\nWarnings/Debug Info:\n" + result.getErrorMessage();
-			}
-			sendResponse(exchange, successMsg);
-		} else {
-			// Return the detailed error message to the client
-			sendResponse(exchange, "Failed to set function prototype: " + result.getErrorMessage());
-		}
-	}
-
-	/**
 	 * Set the function prototype for a given function address
 	 *
 	 * @param functionAddrStr The address of the function as a string
 	 * @param prototype       The prototype string to set
 	 * @return PrototypeResult indicating success or failure with error message
 	 */
-	private PrototypeResult setFunctionPrototype(String functionAddrStr, String prototype, String programName) {
+	@HttpRoute(method=HttpMethod.POST, path="/set_function_prototype")
+	@McpTool(name="set_function_prototype", description="Set a function's prototype.")
+	public PrototypeResult setFunctionPrototype(@Param(name="function_address") String functionAddrStr, @Param(name="prototype") String prototype, @Param(name="program", nullable=true) String programName) {
 		// Input validation
 		Program program = getProgramByName(programName);
 		if (program == null)

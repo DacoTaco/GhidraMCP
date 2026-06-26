@@ -1,26 +1,26 @@
 package com.lauriewired.handlers.act;
 
+import java.lang.reflect.InvocationTargetException;
+import java.util.concurrent.atomic.AtomicReference;
+
+import javax.swing.SwingUtilities;
+
+import org.eclipse.jetty.http.HttpMethod;
+
 import com.lauriewired.handlers.Handler;
-import com.sun.net.httpserver.HttpExchange;
+import com.lauriewired.http.HttpRoute;
+import com.lauriewired.http.Param;
+import com.lauriewired.mcp.McpTool;
+import static com.lauriewired.util.GhidraUtils.resolveDataType;
+import com.lauriewired.util.StructUtils.StructMember;
+
 import ghidra.framework.plugintool.PluginTool;
+import ghidra.program.model.data.CategoryPath;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeConflictHandler;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.StructureDataType;
 import ghidra.program.model.listing.Program;
-
-import com.google.gson.Gson;
-
-import javax.swing.SwingUtilities;
-import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
-
-import static com.lauriewired.util.GhidraUtils.*;
-import static com.lauriewired.util.ParseUtils.*;
-import static com.lauriewired.util.StructUtils.StructMember;
-import ghidra.program.model.data.CategoryPath;
 
 /**
  * Handler for creating a new struct in Ghidra.
@@ -34,29 +34,7 @@ public final class CreateStruct extends Handler {
 	 * @param tool The PluginTool instance to interact with Ghidra.
 	 */
 	public CreateStruct(PluginTool tool) {
-		super(tool, "/create_struct");
-	}
-
-	/**
-	 * Handles the HTTP request to create a new struct.
-	 * Parses parameters from the POST request and creates the struct in Ghidra.
-	 *
-	 * @param exchange The HTTP exchange containing the request and response.
-	 * @throws IOException If an I/O error occurs during handling.
-	 */
-	public void handle(HttpExchange exchange) throws IOException {
-		Map<String, String> params = parsePostParams(exchange);
-		String name = params.get("name");
-		String category = params.get("category");
-		long size = parseIntOrDefault(params.get("size"), 0);
-		String membersJson = params.get("members"); // Optional
-		String programName = params.get("program");
-
-		if (name == null || name.isEmpty()) {
-			sendResponse(exchange, "Struct name is required");
-			return;
-		}
-		sendResponse(exchange, createStruct(name, category, (int) size, membersJson, programName));
+		super(tool);
 	}
 
 	/**
@@ -69,12 +47,20 @@ public final class CreateStruct extends Handler {
 	 * @param membersJson JSON array of struct members (optional).
 	 * @return A message indicating success or failure of the operation.
 	 */
-	private String createStruct(String name, String category, int size, String membersJson, String programName) {
+	@HttpRoute(method=HttpMethod.POST, path = "/create_struct")
+	@McpTool(name = "create_struct", description = "Create a new structure.")
+	public String createStruct(@Param(name = "name") String name, @Param(name = "category", nullable = true) String category,
+							   @Param(name = "size", nullable = true) Integer structSize, @Param(name = "members", nullable = true) StructMember[] members,
+							   @Param(name = "program") String programName) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
 
-		final AtomicReference<String> result = new AtomicReference<>();
+		if(structSize == null)
+			structSize = 0;
+
+		final AtomicReference<String> result = new AtomicReference<>();		
+		final int size = structSize;
 		try {
 			SwingUtilities.invokeAndWait(() -> {
 				int txId = program.startTransaction("Create Struct");
@@ -92,13 +78,10 @@ public final class CreateStruct extends Handler {
 					StringBuilder responseBuilder = new StringBuilder(
 							"Struct " + name + " created successfully in category " + path);
 
-					if (membersJson != null && !membersJson.isEmpty()) {
-						Gson gson = new Gson();
-						StructMember[] members = gson.fromJson(membersJson, StructMember[].class);
-
+					if (members != null) {
 						int membersAdded = 0;
 						for (StructMember member : members) {
-							DataType memberDt = resolveDataType(tool, dtm, member.type);
+							DataType memberDt = resolveDataType(tool, program, dtm, member.type);
 							if (memberDt == null) {
 								responseBuilder.append("\nError: Could not resolve data type '").append(member.type)
 										.append("' for member '").append(member.name)

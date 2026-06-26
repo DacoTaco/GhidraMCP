@@ -1,23 +1,23 @@
 package com.lauriewired.handlers.act;
 
+import java.lang.reflect.InvocationTargetException;
+import java.util.concurrent.atomic.AtomicReference;
+
+import javax.swing.SwingUtilities;
+
+import org.eclipse.jetty.http.HttpMethod;
+
 import com.lauriewired.handlers.Handler;
-import com.sun.net.httpserver.HttpExchange;
+import com.lauriewired.http.HttpRoute;
+import com.lauriewired.http.Param;
+import com.lauriewired.mcp.McpTool;
+
 import ghidra.framework.plugintool.PluginTool;
+import ghidra.program.model.data.CategoryPath;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.EnumDataType;
 import ghidra.program.model.listing.Program;
-
-import com.google.gson.Gson;
-
-import javax.swing.SwingUtilities;
-import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
-
-import static com.lauriewired.util.ParseUtils.*;
-import ghidra.program.model.data.CategoryPath;
 
 /**
  * Handler for removing values from an enum in Ghidra.
@@ -33,28 +33,7 @@ public final class RemoveEnumValues extends Handler {
 	 * @param tool The Ghidra plugin tool instance.
 	 */
 	public RemoveEnumValues(PluginTool tool) {
-		super(tool, "/remove_enum_values");
-	}
-
-	/**
-	 * Handles the HTTP request to remove values from an enum.
-	 *
-	 * @param exchange The HTTP exchange containing the request and response.
-	 * @throws IOException If an I/O error occurs during handling.
-	 */
-	@Override
-	public void handle(HttpExchange exchange) throws IOException {
-		Map<String, String> params = parsePostParams(exchange);
-		String enumName = params.get("enum_name");
-		String category = params.get("category");
-		String valuesParam = params.get("values");
-		String programName = params.get("program");
-
-		if (enumName == null || valuesParam == null) {
-			sendResponse(exchange, "enum_name and values are required");
-			return;
-		}
-		sendResponse(exchange, removeEnumValues(enumName, category, valuesParam, programName));
+		super(tool);
 	}
 
 	/**
@@ -65,7 +44,10 @@ public final class RemoveEnumValues extends Handler {
 	 * @param valuesParam JSON array of value names to remove, or single value name.
 	 * @return A message indicating success or failure.
 	 */
-	private String removeEnumValues(String enumName, String category, String valuesParam, String programName) {
+	@HttpRoute(method=HttpMethod.POST, path="/remove_enum_values")
+	@McpTool(name = "remove_enum_values", description = "Remove values from an existing enum.")
+    public String removeEnumValues(@Param(name="enum_name") String enumName, @Param(name="category", nullable=true) String category, 
+								   @Param(name="values") String[] values, @Param(name="program", nullable=true) String programName) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
@@ -89,20 +71,8 @@ public final class RemoveEnumValues extends Handler {
 					StringBuilder responseBuilder = new StringBuilder(
 							"Removing values from enum " + enumName);
 
-					// Parse value names to remove
-					List<String> valueNames = new ArrayList<>();
-					try {
-						// Try to parse as JSON array first
-						Gson gson = new Gson();
-						String[] names = gson.fromJson(valuesParam, String[].class);
-						valueNames.addAll(Arrays.asList(names));
-					} catch (Exception e) {
-						// If not JSON array, treat as single value name
-						valueNames.add(valuesParam.trim());
-					}
-
 					int valuesRemoved = 0;
-					for (String valueName : valueNames) {
+					for (String valueName : values) {
 						try {
 							// Check if value exists
 							boolean valueExists = false;

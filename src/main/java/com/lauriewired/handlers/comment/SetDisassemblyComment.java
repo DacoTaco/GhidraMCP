@@ -1,15 +1,15 @@
 package com.lauriewired.handlers.comment;
 
+import org.eclipse.jetty.http.HttpMethod;
+
 import com.lauriewired.handlers.Handler;
-import com.sun.net.httpserver.HttpExchange;
+import com.lauriewired.http.HttpRoute;
+import com.lauriewired.http.Param;
+import com.lauriewired.mcp.McpTool;
+import static com.lauriewired.util.GhidraUtils.setCommentAtAddress;
+
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.listing.CommentType;
-
-import java.util.Map;
-
-import static com.lauriewired.util.GhidraUtils.setCommentAtAddress;
-import static com.lauriewired.util.ParseUtils.parsePostParams;
-import static com.lauriewired.util.ParseUtils.sendResponse;
 
 /**
  * Handler for setting a comment in the disassembly at a specific address.
@@ -22,24 +22,19 @@ public final class SetDisassemblyComment extends Handler {
 	 * @param tool the Ghidra PluginTool instance
 	 */
 	public SetDisassemblyComment(PluginTool tool) {
-		super(tool, "/set_disassembly_comment");
+		super(tool);
 	}
 
-	/**
-	 * Handles the HTTP request to set a disassembly comment.
-	 * Expects a POST request with parameters: address and comment.
-	 *
-	 * @param exchange the HTTP exchange containing the request
-	 * @throws Exception if an error occurs while handling the request
-	 */
-	@Override
-	public void handle(HttpExchange exchange) throws Exception {
-		Map<String, String> params = parsePostParams(exchange);
-		String address = params.get("address");
-		String comment = params.get("comment");
-		String programName = params.get("program");
-		boolean success = setDisassemblyComment(programName, address, comment);
-		sendResponse(exchange, success ? "Comment set successfully" : "Failed to set comment");
+	@HttpRoute(method=HttpMethod.POST, path = "/set_disassembly_comment")
+	@McpTool(name="set_disassembly_comment", description="Set a comment for a given address in the function disassembly.")
+	public String setDisassemblyCommentRoute(
+		@Param(name = "address") String address,
+		@Param(name = "comment") String comment,
+		@Param(name = "program", nullable = true) String program
+	) {
+		return setDisassemblyComment(program, address, comment)
+			? "Comment set successfully"
+			: "Failed to set comment";
 	}
 
 	/**

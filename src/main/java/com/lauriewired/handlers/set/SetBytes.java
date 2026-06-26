@@ -1,24 +1,25 @@
 package com.lauriewired.handlers.set;
 
+import java.lang.reflect.InvocationTargetException;
+import java.util.concurrent.atomic.AtomicReference;
+
+import javax.swing.SwingUtilities;
+
+import org.eclipse.jetty.http.HttpMethod;
+
 import com.lauriewired.handlers.Handler;
-import com.sun.net.httpserver.HttpExchange;
-import ghidra.program.disassemble.Disassembler;
+import com.lauriewired.http.HttpRoute;
+import com.lauriewired.http.Param;
+import com.lauriewired.mcp.McpTool;
+
 import ghidra.framework.plugintool.PluginTool;
+import ghidra.program.disassemble.Disassembler;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Listing;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.Memory;
 import ghidra.util.Msg;
 import ghidra.util.task.TaskMonitor;
-
-import javax.swing.*;
-import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
-
-import static com.lauriewired.util.ParseUtils.parsePostParams;
-import static com.lauriewired.util.ParseUtils.sendResponse;
 
 /**
  * Handler for writing bytes to a specific memory address in the current program.
@@ -32,30 +33,7 @@ public final class SetBytes extends Handler {
      * @param tool the PluginTool instance to use for program access
      */
     public SetBytes(PluginTool tool) {
-        super(tool, "/set_bytes");
-    }
-
-    /**
-     * Handles the HTTP request to write bytes to a specified address.
-     *
-     * @param exchange the HttpExchange object containing the request
-     * @throws IOException if an I/O error occurs
-     */
-    @Override
-    public void handle(HttpExchange exchange) throws IOException {
-        Map<String, String> params = parsePostParams(exchange);
-        String addressStr = params.get("address");
-        String bytesStr = params.get("bytes");
-
-        String programName = params.get("program");
-
-        if (addressStr == null || bytesStr == null) {
-            sendResponse(exchange, "Missing 'address' or 'bytes' parameter");
-            return;
-        }
-
-        String result = writeBytesToAddress(addressStr, bytesStr, programName);
-        sendResponse(exchange, result);
+        super(tool);
     }
 
     /**
@@ -65,7 +43,9 @@ public final class SetBytes extends Handler {
      * @param bytesStr   the string of bytes in hex (e.g., "90 90 90")
      * @return a message indicating the result of the operation
      */
-    private String writeBytesToAddress(String addressStr, String bytesStr, String programName) {
+    @HttpRoute(method=HttpMethod.POST, path="/set_bytes")
+    @McpTool(name="set_bytes", description="Writes a sequence of bytes to the specified address in the program's memory.")
+    public String writeBytesToAddress(@Param(name="address") String addressStr, @Param(name="bytes") String bytesStr, @Param(name="program", nullable=true) String programName) {
         Program program = getProgramByName(programName);
         if (program == null)
             return "No active program";

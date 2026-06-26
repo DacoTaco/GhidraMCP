@@ -1,7 +1,16 @@
 package com.lauriewired.handlers.set;
 
+import java.lang.reflect.InvocationTargetException;
+
+import javax.swing.SwingUtilities;
+
+import org.eclipse.jetty.http.HttpMethod;
+
 import com.lauriewired.handlers.Handler;
-import com.sun.net.httpserver.HttpExchange;
+import com.lauriewired.http.HttpRoute;
+import com.lauriewired.http.Param;
+import com.lauriewired.mcp.McpTool;
+
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Data;
@@ -11,14 +20,6 @@ import ghidra.program.model.symbol.SourceType;
 import ghidra.program.model.symbol.Symbol;
 import ghidra.program.model.symbol.SymbolTable;
 import ghidra.util.Msg;
-
-import javax.swing.*;
-import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.util.Map;
-
-import static com.lauriewired.util.ParseUtils.parsePostParams;
-import static com.lauriewired.util.ParseUtils.sendResponse;
 
 /**
  * Handler for renaming data at a specific address in the current program.
@@ -32,22 +33,7 @@ public final class RenameData extends Handler {
 	 * @param tool the PluginTool instance to use for program access
 	 */
 	public RenameData(PluginTool tool) {
-		super(tool, "/renameData");
-	}
-
-	/**
-	 * Handles the HTTP request to rename data at a specified address.
-	 * Expects POST parameters "address" and "newName".
-	 *
-	 * @param exchange the HttpExchange object containing the request
-	 * @throws IOException if an I/O error occurs
-	 */
-	@Override
-	public void handle(HttpExchange exchange) throws IOException {
-		Map<String, String> params = parsePostParams(exchange);
-		String programName = params.get("program");
-		renameDataAtAddress(params.get("address"), params.get("newName"), programName);
-		sendResponse(exchange, "Rename data attempted");
+		super(tool);
 	}
 
 	/**
@@ -57,7 +43,10 @@ public final class RenameData extends Handler {
 	 * @param addressStr the address of the data as a string
 	 * @param newName    the new name for the data
 	 */
-	private void renameDataAtAddress(String addressStr, String newName, String programName) {
+
+	@HttpRoute(method = HttpMethod.POST, path = "/renameData")
+    @McpTool(name = "rename_data", description = "Rename a data label at the specified address.")
+	public void renameDataAtAddress(@Param(name = "program", nullable = true) String programName, @Param(name = "address") String addressStr, @Param(name = "newName") String newName) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return;

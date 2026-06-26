@@ -1,16 +1,20 @@
 package com.lauriewired.handlers.get;
 
+import org.eclipse.jetty.http.HttpMethod;
+
 import com.lauriewired.handlers.Handler;
-import com.sun.net.httpserver.HttpExchange;
+import com.lauriewired.http.HttpRoute;
+import com.lauriewired.http.Param;
+import com.lauriewired.mcp.McpTool;
+import static com.lauriewired.util.ParseUtils.escapeString;
+
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.address.Address;
-import ghidra.program.model.listing.*;
-import ghidra.program.model.symbol.*;
-
-import java.io.IOException;
-import java.util.*;
-
-import static com.lauriewired.util.ParseUtils.*;
+import ghidra.program.model.listing.Data;
+import ghidra.program.model.listing.Program;
+import ghidra.program.model.symbol.Symbol;
+import ghidra.program.model.symbol.SymbolIterator;
+import ghidra.program.model.symbol.SymbolTable;
 
 /**
  * Handler to retrieve data associated with a specific label in the current
@@ -24,21 +28,7 @@ public final class GetDataByLabel extends Handler {
 	 * @param tool The PluginTool instance to use for accessing the current program.
 	 */
 	public GetDataByLabel(PluginTool tool) {
-		super(tool, "/get_data_by_label");
-	}
-
-	/**
-	 * Handles the HTTP request to retrieve data by label.
-	 * 
-	 * @param exchange The HttpExchange object containing the request and response.
-	 * @throws IOException If an I/O error occurs during handling.
-	 */
-	@Override
-	public void handle(HttpExchange exchange) throws IOException {
-		Map<String, String> qparams = parseQueryParams(exchange);
-		String label = qparams.get("label");
-		String programName = qparams.get("program");
-		sendResponse(exchange, getDataByLabel(label, programName));
+		super(tool);
 	}
 
 	/**
@@ -50,7 +40,9 @@ public final class GetDataByLabel extends Handler {
 	 *         or an error message if the label is not found or no program is
 	 *         loaded.
 	 */
-	private String getDataByLabel(String label, String programName) {
+	@HttpRoute(method=HttpMethod.GET, path="/get_data_by_label")
+    @McpTool(name="get_data_by_label", description = "Get information about a data label in the current program")
+    public String handle(@Param(name="program", nullable=true) String programName, @Param(name="label") String label){
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";

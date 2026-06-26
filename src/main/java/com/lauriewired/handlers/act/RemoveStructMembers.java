@@ -1,24 +1,32 @@
 package com.lauriewired.handlers.act;
 
-import com.lauriewired.handlers.Handler;
-import com.sun.net.httpserver.HttpExchange;
-import ghidra.framework.plugintool.PluginTool;
-import ghidra.program.model.data.DataType;
-import ghidra.program.model.data.DataTypeManager;
-import ghidra.program.model.data.Structure;
-import ghidra.program.model.data.DataTypeComponent;
-import ghidra.program.model.listing.Program;
-
-import com.google.gson.Gson;
-
-import javax.swing.SwingUtilities;
-import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static com.lauriewired.util.ParseUtils.*;
+import javax.swing.SwingUtilities;
+
+import org.eclipse.jetty.http.HttpMethod;
+
+import com.google.gson.Gson;
+import com.lauriewired.handlers.Handler;
+import com.lauriewired.http.HttpRoute;
+import com.lauriewired.http.Param;
+import com.lauriewired.mcp.McpTool;
+import static com.lauriewired.util.ParseUtils.convertObject;
+import static com.lauriewired.util.ParseUtils.mcpError;
+import static com.lauriewired.util.ParseUtils.mcpSuccess;
+
+import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.data.CategoryPath;
+import ghidra.program.model.data.DataType;
+import ghidra.program.model.data.DataTypeComponent;
+import ghidra.program.model.data.DataTypeManager;
+import ghidra.program.model.data.Structure;
+import ghidra.program.model.listing.Program;
+import io.modelcontextprotocol.server.McpServerFeatures.SyncToolSpecification;
+import io.modelcontextprotocol.spec.McpSchema.Tool;
 
 /**
  * Handler for removing members from a structure in Ghidra.
@@ -34,30 +42,9 @@ public final class RemoveStructMembers extends Handler {
 	 * @param tool The Ghidra plugin tool instance.
 	 */
 	public RemoveStructMembers(PluginTool tool) {
-		super(tool, "/remove_struct_members");
+		super(tool);
 	}
-
-	/**
-	 * Handles the HTTP request to remove members from a structure.
-	 *
-	 * @param exchange The HTTP exchange containing the request and response.
-	 * @throws IOException If an I/O error occurs during handling.
-	 */
-	@Override
-	public void handle(HttpExchange exchange) throws IOException {
-		Map<String, String> params = parsePostParams(exchange);
-		String structName = params.get("struct_name");
-		String category = params.get("category");
-		String membersParam = params.get("members");
-		String programName = params.get("program");
-
-		if (structName == null || membersParam == null) {
-			sendResponse(exchange, "struct_name and members are required");
-			return;
-		}
-		sendResponse(exchange, removeStructMembers(structName, category, membersParam, programName));
-	}
-
+	
 	/**
 	 * Removes members from a structure in the current Ghidra program.
 	 *
@@ -66,7 +53,10 @@ public final class RemoveStructMembers extends Handler {
 	 * @param membersParam JSON array of member names to remove, or single member name.
 	 * @return A message indicating success or failure.
 	 */
-	private String removeStructMembers(String structName, String category, String membersParam, String programName) {
+	@HttpRoute(method=HttpMethod.POST, path="/remove_struct_members")
+	@McpTool(name="remove_struct_members", description="Remove members from an existing struct.")
+	public String removeStructMembers(@Param(name="struct_name") String structName, @Param(name="category", nullable=true) String category, 
+									   @Param(name="members") String[] members, @Param(name="category", nullable=true) String programName) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
@@ -87,23 +77,10 @@ public final class RemoveStructMembers extends Handler {
 					}
 					Structure struct = (Structure) dt;
 
-					StringBuilder responseBuilder = new StringBuilder(
-							"Removing members from struct " + structName);
-
-					// Parse member names to remove
-					List<String> memberNames = new ArrayList<>();
-					try {
-						// Try to parse as JSON array first
-						Gson gson = new Gson();
-						String[] names = gson.fromJson(membersParam, String[].class);
-						memberNames.addAll(Arrays.asList(names));
-					} catch (Exception e) {
-						// If not JSON array, treat as single member name
-						memberNames.add(membersParam.trim());
-					}
+					StringBuilder responseBuilder = new StringBuilder("Removing members from struct " + structName);
 
 					int membersRemoved = 0;
-					for (String memberName : memberNames) {
+					for (String memberName : members) {
 						DataTypeComponent component = null;
 						for (DataTypeComponent comp : struct.getComponents()) {
 							if (comp.getFieldName() != null && comp.getFieldName().equals(memberName)) {

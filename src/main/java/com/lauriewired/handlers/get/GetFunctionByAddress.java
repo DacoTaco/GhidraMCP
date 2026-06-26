@@ -1,38 +1,23 @@
 package com.lauriewired.handlers.get;
 
+import org.eclipse.jetty.http.HttpMethod;
+
 import com.lauriewired.handlers.Handler;
-import com.sun.net.httpserver.HttpExchange;
+import com.lauriewired.http.HttpRoute;
+import com.lauriewired.http.Param;
+import com.lauriewired.mcp.McpTool;
+
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Program;
-
-import java.io.IOException;
-import java.util.Map;
-
-import static com.lauriewired.util.ParseUtils.parseQueryParams;
-import static com.lauriewired.util.ParseUtils.sendResponse;
 
 /**
  * Handler to get function details by address
  */
 public final class GetFunctionByAddress extends Handler {
 	public GetFunctionByAddress(PluginTool tool) {
-		super(tool, "/get_function_by_address");
-	}
-
-	/**
-	 * Handle HTTP GET request to retrieve function details by address
-	 *
-	 * @param exchange the HTTP exchange
-	 * @throws IOException if an I/O error occurs
-	 */
-	@Override
-	public void handle(HttpExchange exchange) throws IOException {
-		Map<String, String> qparams = parseQueryParams(exchange);
-		String address = qparams.get("address");
-		String programName = qparams.get("program");
-		sendResponse(exchange, getFunctionByAddress(address, programName));
+		super(tool);
 	}
 
 	/**
@@ -41,7 +26,9 @@ public final class GetFunctionByAddress extends Handler {
 	 * @param addressStr the address as a string
 	 * @return a string containing function details or an error message
 	 */
-	private String getFunctionByAddress(String addressStr, String programName) {
+	@HttpRoute(method = HttpMethod.GET, path = "/get_function_by_address")
+    @McpTool(name = "get_function_by_address", description = "Get a function by its address")
+	public String getFunctionByAddress(@Param(name = "address") String addressStr, @Param(name = "program", nullable = true) String programName) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";

@@ -1,28 +1,28 @@
 package com.lauriewired.handlers.act;
 
+import java.lang.reflect.InvocationTargetException;
+import java.util.concurrent.atomic.AtomicReference;
+
+import javax.swing.SwingUtilities;
+
+import org.eclipse.jetty.http.HttpMethod;
+
 import com.lauriewired.handlers.Handler;
-import com.sun.net.httpserver.HttpExchange;
+import com.lauriewired.http.HttpRoute;
+import com.lauriewired.http.Param;
+import com.lauriewired.mcp.McpTool;
+
 import ghidra.framework.plugintool.PluginTool;
+import ghidra.program.database.data.DataTypeUtilities;
+import ghidra.program.model.data.DataTypeComponent;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.Structure;
-import ghidra.program.model.data.DataTypeComponent;
 import ghidra.program.model.listing.GhidraClass;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.Namespace;
 import ghidra.program.model.symbol.Symbol;
 import ghidra.program.model.symbol.SymbolTable;
 import ghidra.program.model.symbol.SymbolType;
-import ghidra.program.database.data.DataTypeUtilities;
-
-import com.google.gson.Gson;
-
-import javax.swing.SwingUtilities;
-import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
-
-import static com.lauriewired.util.ParseUtils.*;
 
 /**
  * Handler for removing members from a C++ class in Ghidra.
@@ -39,28 +39,7 @@ public final class RemoveClassMembers extends Handler {
 	 * @param tool The Ghidra plugin tool instance.
 	 */
 	public RemoveClassMembers(PluginTool tool) {
-		super(tool, "/remove_class_members");
-	}
-
-	/**
-	 * Handles the HTTP request to remove members from a class.
-	 *
-	 * @param exchange The HTTP exchange containing the request and response.
-	 * @throws IOException If an I/O error occurs during handling.
-	 */
-	@Override
-	public void handle(HttpExchange exchange) throws IOException {
-		Map<String, String> params = parsePostParams(exchange);
-		String className = params.get("class_name");
-		String parentNamespace = params.get("parent_namespace");
-		String membersParam = params.get("members");
-		String programName = params.get("program");
-
-		if (className == null || membersParam == null) {
-			sendResponse(exchange, "class_name and members are required");
-			return;
-		}
-		sendResponse(exchange, removeClassMembers(className, parentNamespace, membersParam, programName));
+		super(tool);
 	}
 
 	/**
@@ -68,10 +47,13 @@ public final class RemoveClassMembers extends Handler {
 	 *
 	 * @param className The name of the class to modify.
 	 * @param parentNamespace The parent namespace where the class is located (optional).
-	 * @param membersParam JSON array of member names to remove, or single member name.
+	 * @param members string array of member names to remove, or single member name.
 	 * @return A message indicating success or failure.
 	 */
-	private String removeClassMembers(String className, String parentNamespace, String membersParam, String programName) {
+	@HttpRoute(method=HttpMethod.POST, path="/remove_class_members")
+	@McpTool(name = "remove_class_members", description = "Remove members from an existing C++ class.")
+    public String removeClassMembers(@Param(name="class_name") String className, @Param(name="parent_namespace", nullable=true) String parentNamespace, 
+									 @Param(name="members") String[] members, @Param(name="program", nullable=true) String programName) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
@@ -117,23 +99,10 @@ public final class RemoveClassMembers extends Handler {
 						return;
 					}
 
-					StringBuilder responseBuilder = new StringBuilder(
-							"Removing members from class " + className);
-
-					// Parse member names to remove
-					List<String> memberNames = new ArrayList<>();
-					try {
-						// Try to parse as JSON array first
-						Gson gson = new Gson();
-						String[] names = gson.fromJson(membersParam, String[].class);
-						memberNames.addAll(Arrays.asList(names));
-					} catch (Exception e) {
-						// If not JSON array, treat as single member name
-						memberNames.add(membersParam.trim());
-					}
-
+					StringBuilder responseBuilder = new StringBuilder("Removing members from class " + className);
+					
 					int membersRemoved = 0;
-					for (String memberName : memberNames) {
+					for (String memberName : members) {
 						DataTypeComponent component = null;
 						for (DataTypeComponent comp : classStruct.getComponents()) {
 							if (comp.getFieldName() != null && comp.getFieldName().equals(memberName)) {

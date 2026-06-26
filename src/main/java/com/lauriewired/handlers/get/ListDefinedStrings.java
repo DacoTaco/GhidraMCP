@@ -1,18 +1,22 @@
 package com.lauriewired.handlers.get;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.eclipse.jetty.http.HttpMethod;
+
 import com.lauriewired.handlers.Handler;
-import com.sun.net.httpserver.HttpExchange;
+import com.lauriewired.http.HttpRoute;
+import com.lauriewired.http.Param;
+import com.lauriewired.mcp.McpTool;
+import static com.lauriewired.util.ParseUtils.escapeString;
+import static com.lauriewired.util.ParseUtils.paginateList;
+
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.listing.Data;
 import ghidra.program.model.listing.DataIterator;
 import ghidra.program.model.listing.Program;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
-import static com.lauriewired.util.ParseUtils.*;
 
 /**
  * Handler to list all defined strings in the current program
@@ -25,23 +29,7 @@ public final class ListDefinedStrings extends Handler {
 	 * @param tool the PluginTool instance to use for accessing the current program
 	 */
 	public ListDefinedStrings(PluginTool tool) {
-		super(tool, "/strings");
-	}
-
-	/**
-	 * Handle HTTP GET requests to list defined strings
-	 * 
-	 * @param exchange the HTTP exchange containing the request
-	 * @throws Exception if an error occurs while processing the request
-	 */
-	@Override
-	public void handle(HttpExchange exchange) throws Exception {
-		Map<String, String> qparams = parseQueryParams(exchange);
-		int offset = parseIntOrDefault(qparams.get("offset"), 0);
-		int limit = parseIntOrDefault(qparams.get("limit"), 100);
-		String filter = qparams.get("filter");
-		String programName = qparams.get("program");
-		sendResponse(exchange, listDefinedStrings(offset, limit, filter, programName));
+		super(tool);
 	}
 
 	/**
@@ -52,11 +40,16 @@ public final class ListDefinedStrings extends Handler {
 	 * @param filter optional filter to apply to string values
 	 * @return a formatted string containing the list of defined strings
 	 */
-	private String listDefinedStrings(int offset, int limit, String filter, String programName) {
+	@HttpRoute(method = HttpMethod.GET, path = "/strings")
+    @McpTool(name = "list_strings", description = "List all defined strings in the program with their addresses.")
+	public String listDefinedStrings(@Param(name = "offset", nullable = true) Integer offset, @Param(name = "limit", nullable = true) Integer limit, 
+									 @Param(name = "filter", nullable = true) String filter, @Param(name = "program", nullable = true) String programName) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
 
+		offset = (offset == null) ? 0 : offset;
+        limit = (limit == null) ? 100 : limit;
 		List<String> lines = new ArrayList<>();
 		DataIterator dataIt = program.getListing().getDefinedData(true);
 

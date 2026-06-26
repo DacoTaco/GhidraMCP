@@ -1,20 +1,24 @@
 package com.lauriewired.handlers.get;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.eclipse.jetty.http.HttpMethod;
+
+import com.google.gson.Gson;
 import com.lauriewired.handlers.Handler;
-import com.sun.net.httpserver.HttpExchange;
+import com.lauriewired.http.HttpRoute;
+import com.lauriewired.http.Param;
+import com.lauriewired.mcp.McpTool;
+
 import ghidra.framework.plugintool.PluginTool;
+import ghidra.program.model.data.CategoryPath;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.Enum;
 import ghidra.program.model.listing.Program;
-
-import com.google.gson.Gson;
-
-import java.io.IOException;
-import java.util.*;
-
-import static com.lauriewired.util.ParseUtils.*;
-import ghidra.program.model.data.CategoryPath;
 
 /**
  * Handler for retrieving details of an enum by its name and category.
@@ -27,26 +31,7 @@ public final class GetEnum extends Handler {
 	 * @param tool the PluginTool instance to use for accessing the current program.
 	 */
 	public GetEnum(PluginTool tool) {
-		super(tool, "/get_enum");
-	}
-
-	/**
-	 * Handles the HTTP request to retrieve enum details.
-	 *
-	 * @param exchange the HttpExchange object containing the request and response.
-	 * @throws IOException if an I/O error occurs during handling.
-	 */
-	@Override
-	public void handle(HttpExchange exchange) throws IOException {
-		Map<String, String> qparams = parseQueryParams(exchange);
-		String enumName = qparams.get("name");
-		String category = qparams.get("category");
-		String programName = qparams.get("program");
-		if (enumName == null) {
-			sendResponse(exchange, "name is required");
-			return;
-		}
-		sendResponse(exchange, getEnum(enumName, category, programName));
+		super(tool);
 	}
 
 	/**
@@ -58,7 +43,9 @@ public final class GetEnum extends Handler {
 	 * @return a JSON representation of the enum or an error message if not
 	 *         found.
 	 */
-	private String getEnum(String enumName, String category, String programName) {
+	@HttpRoute(method = HttpMethod.GET, path = "/get_enum")
+    @McpTool(name = "get_enum", description = "Get an enum's definition from a program")
+    public String getEnum(@Param(name = "program", nullable = true) String programName, @Param(name = "name") String enumName, @Param(name = "category", nullable = true) String category) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";

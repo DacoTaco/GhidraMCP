@@ -1,8 +1,23 @@
 package com.lauriewired.handlers.act;
 
+import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
+
+import javax.swing.SwingUtilities;
+
+import org.eclipse.jetty.http.HttpMethod;
+
 import com.lauriewired.handlers.Handler;
-import com.sun.net.httpserver.HttpExchange;
+import com.lauriewired.http.HttpRoute;
+import com.lauriewired.http.Param;
+import com.lauriewired.mcp.McpTool;
+import static com.lauriewired.util.GhidraUtils.resolveDataType;
+import com.lauriewired.util.StructUtils.StructMember;
+
 import ghidra.framework.plugintool.PluginTool;
+import ghidra.program.model.data.CategoryPath;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeConflictHandler;
 import ghidra.program.model.data.DataTypeManager;
@@ -14,19 +29,6 @@ import ghidra.program.model.symbol.SourceType;
 import ghidra.program.model.symbol.SymbolTable;
 import ghidra.util.exception.DuplicateNameException;
 import ghidra.util.exception.InvalidInputException;
-
-import com.google.gson.Gson;
-
-import javax.swing.SwingUtilities;
-import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
-
-import static com.lauriewired.util.GhidraUtils.*;
-import static com.lauriewired.util.ParseUtils.*;
-import static com.lauriewired.util.StructUtils.StructMember;
-import ghidra.program.model.data.CategoryPath;
 
 /**
  * Handler for creating a new C++ class in Ghidra.
@@ -41,30 +43,7 @@ public final class CreateClass extends Handler {
 	 * @param tool The PluginTool instance to interact with Ghidra.
 	 */
 	public CreateClass(PluginTool tool) {
-		super(tool, "/create_class");
-	}
-
-	/**
-	 * Handles the HTTP request to create a new C++ class.
-	 * Parses parameters from the POST request and creates the class in Ghidra.
-	 *
-	 * @param exchange The HTTP exchange containing the request and response.
-	 * @throws IOException If an I/O error occurs during handling.
-	 */
-	public void handle(HttpExchange exchange) throws IOException {
-		Map<String, String> params = parsePostParams(exchange);
-		String name = params.get("name");
-		String parentNamespace = params.get("parent_namespace");
-		String membersJson = params.get("members");
-		String programName = params.get("program");
-
-		if (name == null || name.isEmpty()) {
-			sendResponse(exchange, "Error: Class name is required");
-			return;
-		}
-
-		String response = createClassInGhidra(programName, name, parentNamespace, membersJson);
-		sendResponse(exchange, response);
+		super(tool);
 	}
 
 	/**
@@ -76,7 +55,10 @@ public final class CreateClass extends Handler {
 	 * @param membersJson JSON string representing class members.
 	 * @return A status message indicating success or failure.
 	 */
-	private String createClassInGhidra(String programName, String name, String parentNamespace, String membersJson) {
+	@HttpRoute(method=HttpMethod.POST, path = "/create_class")
+	@McpTool(name = "create_class", description = "Create a new C++ class in Ghidra.")
+	public String createClassInGhidra(@Param(name = "program", nullable = true) String programName, @Param(name = "name") String name,
+									  @Param(name = "parent_namespace", nullable = true) String parentNamespace, @Param(name = "members", nullable = true) StructMember[] members){
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
@@ -124,13 +106,10 @@ public final class CreateClass extends Handler {
 					StructureDataType classStruct = new StructureDataType(classCategory, name, 0, dtm);
 
 					// Add members if provided
-					if (membersJson != null && !membersJson.isEmpty()) {
-						Gson gson = new Gson();
-						StructMember[] members = gson.fromJson(membersJson, StructMember[].class);
-
+					if (members != null) {
 						int membersAdded = 0;
 						for (StructMember member : members) {
-							DataType memberDt = resolveDataType(tool, dtm, member.type);
+							DataType memberDt = resolveDataType(tool, program, dtm, member.type);
 							if (memberDt == null) {
 								responseBuilder.append("\nError: Could not resolve data type '").append(member.type)
 										.append("' for member '").append(member.name)

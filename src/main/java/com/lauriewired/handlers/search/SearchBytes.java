@@ -1,17 +1,22 @@
 package com.lauriewired.handlers.search;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.eclipse.jetty.http.HttpMethod;
+
 import com.lauriewired.handlers.Handler;
-import com.sun.net.httpserver.HttpExchange;
+import com.lauriewired.http.HttpRoute;
+import com.lauriewired.http.Param;
+import com.lauriewired.mcp.McpTool;
+import static com.lauriewired.util.ParseUtils.decodeHex;
+import static com.lauriewired.util.ParseUtils.paginateList;
+
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.Memory;
 import ghidra.util.task.TaskMonitorAdapter;
-
-import java.io.IOException;
-import java.util.*;
-
-import static com.lauriewired.util.ParseUtils.*;
 
 /**
  * Handler for searching for byte sequences in the current program's memory.
@@ -25,23 +30,7 @@ public final class SearchBytes extends Handler {
 	 * @param tool The PluginTool instance to use.
 	 */
 	public SearchBytes(PluginTool tool) {
-		super(tool, "/search_bytes");
-	}
-
-	/**
-	 * Parses the query parameters from the HTTP request.
-	 * 
-	 * @param exchange The HttpExchange containing the request.
-	 * @return A map of query parameters.
-	 */
-	@Override
-	public void handle(HttpExchange exchange) throws IOException {
-		Map<String, String> qparams = parseQueryParams(exchange);
-		String bytesHex = qparams.get("bytes");
-		int offset = parseIntOrDefault(qparams.get("offset"), 0);
-		int limit = parseIntOrDefault(qparams.get("limit"), 100);
-		String programName = qparams.get("program");
-		sendResponse(exchange, searchBytes(bytesHex, offset, limit, programName));
+		super(tool);
 	}
 
 	/**
@@ -52,13 +41,16 @@ public final class SearchBytes extends Handler {
 	 * @param limit    The maximum number of results to return.
 	 * @return A string containing the search results, formatted for pagination.
 	 */
-	private String searchBytes(String bytesHex, int offset, int limit, String programName) {
+	@HttpRoute(method = HttpMethod.GET, path = "/segments")
+    @McpTool(name = "list_segments", description = "List all memory segments in the program with pagination.")
+	public String searchBytes(@Param(name = "bytes") String bytesHex, @Param(name = "program", nullable = true) String programName, 
+							  @Param(name = "offset", nullable = true) Integer offset, @Param(name = "limit", nullable = true) Integer limit) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
-		if (bytesHex == null || bytesHex.isEmpty())
-			return "Byte sequence required";
 
+		offset = (offset == null) ? 0 : offset;
+        limit = (limit == null) ? 100 : limit;
 		byte[] needle;
 		try {
 			needle = decodeHex(bytesHex);
@@ -71,7 +63,7 @@ public final class SearchBytes extends Handler {
 
 		Address cur = mem.getMinAddress();
 		while (cur != null && hits.size() < offset + limit) {
-			Address found = mem.findBytes(cur, needle, null, true, TaskMonitorAdapter.DUMMY_MONITOR);
+			Address found = mem.findBytes(cur, needle, null, true, TaskMonitorAdapter.DUMMY);
 			if (found == null)
 				break;
 			hits.add(found.toString());

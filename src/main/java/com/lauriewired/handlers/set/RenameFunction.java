@@ -1,21 +1,22 @@
 package com.lauriewired.handlers.set;
 
+import java.lang.reflect.InvocationTargetException;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import javax.swing.SwingUtilities;
+
+import org.eclipse.jetty.http.HttpMethod;
+
 import com.lauriewired.handlers.Handler;
-import com.sun.net.httpserver.HttpExchange;
+import com.lauriewired.http.HttpRoute;
+import com.lauriewired.http.Param;
+import com.lauriewired.mcp.McpTool;
+
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.SourceType;
 import ghidra.util.Msg;
-
-import javax.swing.*;
-import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import static com.lauriewired.util.ParseUtils.parsePostParams;
-import static com.lauriewired.util.ParseUtils.sendResponse;
 
 /**
  * Handler for renaming a function in the current program.
@@ -28,25 +29,16 @@ public final class RenameFunction extends Handler {
 	 * @param tool the PluginTool instance to interact with Ghidra
 	 */
 	public RenameFunction(PluginTool tool) {
-		super(tool, "/renameFunction");
+		super(tool);
 	}
 
-	/**
-	 * Handles the HTTP request to rename a function.
-	 * Expects parameters "oldName" and "newName" in the POST request.
-	 *
-	 * @param exchange the HttpExchange object containing the request
-	 * @throws IOException if an I/O error occurs
-	 */
-	@Override
-	public void handle(HttpExchange exchange) throws IOException {
-		Map<String, String> params = parsePostParams(exchange);
-		String programName = params.get("program");
-		String response = rename(programName, params.get("oldName"), params.get("newName"))
-				? "Renamed successfully"
-				: "Rename failed";
-		sendResponse(exchange, response);
-	}
+	@HttpRoute(method = HttpMethod.POST, path = "/renameFunction")
+    @McpTool(name = "rename_function", description = "Rename a function by its current name to a new user-defined name.")
+    public String renameFunction(@Param(name = "program", nullable = true) String programName, @Param(name = "oldName", nullable = false) String oldName, @Param(name = "newName", nullable = false) String newName) {
+        return rename(programName, oldName, newName)
+                ? "Renamed successfully"
+                : "Rename failed";
+    }
 
 	/**
 	 * Renames a function in the current program.

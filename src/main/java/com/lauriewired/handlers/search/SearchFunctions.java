@@ -1,18 +1,20 @@
 package com.lauriewired.handlers.search;
 
-import com.lauriewired.handlers.Handler;
-import com.sun.net.httpserver.HttpExchange;
-import ghidra.framework.plugintool.PluginTool;
-import ghidra.program.model.listing.Function;
-import ghidra.program.model.listing.Program;
-
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
-import static com.lauriewired.util.ParseUtils.*;
+import org.eclipse.jetty.http.HttpMethod;
+
+import com.lauriewired.handlers.Handler;
+import com.lauriewired.http.HttpRoute;
+import com.lauriewired.http.Param;
+import com.lauriewired.mcp.McpTool;
+import static com.lauriewired.util.ParseUtils.paginateList;
+
+import ghidra.framework.plugintool.PluginTool;
+import ghidra.program.model.listing.Function;
+import ghidra.program.model.listing.Program;
 
 /**
  * Handler for searching functions by name in the current program.
@@ -25,27 +27,7 @@ public final class SearchFunctions extends Handler {
 	 * @param tool the PluginTool instance to use for accessing the current program.
 	 */
 	public SearchFunctions(PluginTool tool) {
-		super(tool, "/searchFunctions");
-	}
-
-	/**
-	 * Handles HTTP GET requests to search for functions by name.
-	 * Expects query parameters:
-	 * - query: the search term (required)
-	 * - offset: pagination offset (default 0)
-	 * - limit: maximum number of results to return (default 100)
-	 *
-	 * @param exchange the HttpExchange object containing the request and response.
-	 * @throws IOException if an I/O error occurs.
-	 */
-	@Override
-	public void handle(HttpExchange exchange) throws IOException {
-		Map<String, String> qparams = parseQueryParams(exchange);
-		String searchTerm = qparams.get("query");
-		int offset = parseIntOrDefault(qparams.get("offset"), 0);
-		int limit = parseIntOrDefault(qparams.get("limit"), 100);
-		String programName = qparams.get("program");
-		sendResponse(exchange, searchFunctionsByName(searchTerm, offset, limit, programName));
+		super(tool);
 	}
 
 	/**
@@ -57,13 +39,16 @@ public final class SearchFunctions extends Handler {
 	 * @param limit      the maximum number of results to return.
 	 * @return a string containing the results or an error message.
 	 */
-	private String searchFunctionsByName(String searchTerm, int offset, int limit, String programName) {
+	@HttpRoute(method = HttpMethod.GET, path = "/searchFunctions")
+    @McpTool(name = "search_functions_by_name", description = "Search for functions whose name contains the given substring.")
+	public String searchFunctionsByName(@Param(name = "query") String searchTerm, @Param(name = "offset", nullable = true) Integer offset,
+            							 @Param(name = "limit", nullable = true) Integer limit, @Param(name = "program", nullable = true) String programName) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
-		if (searchTerm == null || searchTerm.isEmpty())
-			return "Search term is required";
 
+		offset = (offset == null) ? 0 : offset;
+        limit = (limit == null) ? 100 : limit;
 		List<String> matches = new ArrayList<>();
 		for (Function func : program.getFunctionManager().getFunctions(true)) {
 			String name = func.getName();

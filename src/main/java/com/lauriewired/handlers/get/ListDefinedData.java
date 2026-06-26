@@ -1,19 +1,22 @@
 package com.lauriewired.handlers.get;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.eclipse.jetty.http.HttpMethod;
+
 import com.lauriewired.handlers.Handler;
-import com.sun.net.httpserver.HttpExchange;
+import com.lauriewired.http.HttpRoute;
+import com.lauriewired.http.Param;
+import com.lauriewired.mcp.McpTool;
+import static com.lauriewired.util.ParseUtils.escapeNonAscii;
+import static com.lauriewired.util.ParseUtils.paginateList;
+
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.listing.Data;
 import ghidra.program.model.listing.DataIterator;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.MemoryBlock;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
-import static com.lauriewired.util.ParseUtils.*;
 
 /**
  * Handler for listing defined data in the current program.
@@ -27,22 +30,7 @@ public final class ListDefinedData extends Handler {
 	 * @param tool The PluginTool instance to use for accessing the current program.
 	 */
 	public ListDefinedData(PluginTool tool) {
-		super(tool, "/data");
-	}
-
-	/**
-	 * Handles the HTTP request to list defined data.
-	 * 
-	 * @param exchange The HTTP exchange containing the request.
-	 * @throws IOException If an I/O error occurs.
-	 */
-	@Override
-	public void handle(HttpExchange exchange) throws IOException {
-		Map<String, String> qparams = parseQueryParams(exchange);
-		int offset = parseIntOrDefault(qparams.get("offset"), 0);
-		int limit = parseIntOrDefault(qparams.get("limit"), 100);
-		String programName = qparams.get("program");
-		sendResponse(exchange, listDefinedData(offset, limit, programName));
+		super(tool);
 	}
 
 	/**
@@ -52,10 +40,15 @@ public final class ListDefinedData extends Handler {
 	 * @param limit  The maximum number of items to return.
 	 * @return A string representation of the defined data, formatted for display.
 	 */
-	private String listDefinedData(int offset, int limit, String programName) {
+	@HttpRoute(method = HttpMethod.GET, path = "/data")
+    @McpTool(name="list_data_items", description = "List defined data labels and their values with pagination.")
+	public String listDefinedData(@Param(name = "offset", nullable = true) Integer offset, @Param(name = "limit", nullable = true) Integer limit, @Param(name = "program", nullable = true) String programName) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
+
+		offset = (offset == null) ? 0 : offset;
+        limit = (limit == null) ? 100 : limit;
 
 		List<String> lines = new ArrayList<>();
 		for (MemoryBlock block : program.getMemory().getBlocks()) {

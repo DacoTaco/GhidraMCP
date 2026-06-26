@@ -1,19 +1,20 @@
 package com.lauriewired.handlers.act;
 
+import org.eclipse.jetty.http.HttpMethod;
+
 import com.lauriewired.handlers.Handler;
-import com.sun.net.httpserver.HttpExchange;
-import ghidra.app.decompiler.*;
+import com.lauriewired.http.HttpRoute;
+import com.lauriewired.http.Param;
+import com.lauriewired.http.ParamLocation;
+import com.lauriewired.mcp.McpTool;
+
+import ghidra.app.decompiler.DecompInterface;
+import ghidra.app.decompiler.DecompileOptions;
+import ghidra.app.decompiler.DecompileResults;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Program;
 import ghidra.util.task.ConsoleTaskMonitor;
-import java.util.*;
-
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-
-import static com.lauriewired.util.ParseUtils.sendResponse;
-import static com.lauriewired.util.ParseUtils.parseQueryParams;
 
 /**
  * Handler to decompile a function by its name.
@@ -26,23 +27,7 @@ public final class DecompileFunctionByName extends Handler {
 	 * @param tool The Ghidra plugin tool instance.
 	 */
 	public DecompileFunctionByName(PluginTool tool) {
-		super(tool, "/decompile");
-	}
-
-	/**
-	 * Handles the HTTP request to decompile a function by its name.
-	 * Reads the function name from the request body and returns the decompiled C
-	 * pseudocode.
-	 * 
-	 * @param exchange The HTTP exchange containing the request and response.
-	 * @throws IOException If an I/O error occurs during handling.
-	 */
-	@Override
-	public void handle(HttpExchange exchange) throws IOException {
-		Map<String, String> qparams = parseQueryParams(exchange);
-		String programName = qparams.get("program");
-		String name = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-		sendResponse(exchange, generateResponse(name, programName));
+		super(tool);
 	}
 
 	/**
@@ -53,7 +38,9 @@ public final class DecompileFunctionByName extends Handler {
 	 * @return The decompiled C pseudocode or an error message if the function is
 	 *         not found.
 	 */
-	private String generateResponse(String name, String programName) {
+	@HttpRoute(method=HttpMethod.POST, path="/decompile")
+	@McpTool(name = "decompile_function", description = "Decompile a specific function by name and return the decompiled C code.")
+    public String generateResponse(@Param(name="name", location=ParamLocation.Body) String name, @Param(name="program", nullable=true) String programName) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";

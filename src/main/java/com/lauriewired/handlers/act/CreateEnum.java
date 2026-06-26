@@ -1,24 +1,24 @@
 package com.lauriewired.handlers.act;
 
+import java.lang.reflect.InvocationTargetException;
+import java.util.concurrent.atomic.AtomicReference;
+
+import javax.swing.SwingUtilities;
+
+import org.eclipse.jetty.http.HttpMethod;
+
 import com.lauriewired.handlers.Handler;
-import com.sun.net.httpserver.HttpExchange;
+import com.lauriewired.http.HttpRoute;
+import com.lauriewired.http.Param;
+import com.lauriewired.mcp.McpTool;
+import com.lauriewired.util.EnumUtils.EnumValue;
+
 import ghidra.framework.plugintool.PluginTool;
+import ghidra.program.model.data.CategoryPath;
 import ghidra.program.model.data.DataTypeConflictHandler;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.EnumDataType;
 import ghidra.program.model.listing.Program;
-
-import com.google.gson.Gson;
-
-import javax.swing.SwingUtilities;
-import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
-
-import static com.lauriewired.util.ParseUtils.*;
-import static com.lauriewired.util.EnumUtils.EnumValue;
-import ghidra.program.model.data.CategoryPath;
 
 /**
  * Handler for creating a new enum in Ghidra.
@@ -32,29 +32,7 @@ public final class CreateEnum extends Handler {
 	 * @param tool The PluginTool instance to interact with Ghidra.
 	 */
 	public CreateEnum(PluginTool tool) {
-		super(tool, "/create_enum");
-	}
-
-	/**
-	 * Handles the HTTP request to create a new enum.
-	 * Parses parameters from the POST request and creates the enum in Ghidra.
-	 *
-	 * @param exchange The HTTP exchange containing the request and response.
-	 * @throws IOException If an I/O error occurs during handling.
-	 */
-	public void handle(HttpExchange exchange) throws IOException {
-		Map<String, String> params = parsePostParams(exchange);
-		String name = params.get("name");
-		String category = params.get("category");
-		long size = parseIntOrDefault(params.get("size"), 4); // Default to 4 bytes (int size)
-		String valuesJson = params.get("values"); // Optional
-		String programName = params.get("program");
-
-		if (name == null || name.isEmpty()) {
-			sendResponse(exchange, "Enum name is required");
-			return;
-		}
-		sendResponse(exchange, createEnum(name, category, (int) size, valuesJson, programName));
+		super(tool);
 	}
 
 	/**
@@ -67,12 +45,20 @@ public final class CreateEnum extends Handler {
 	 * @param valuesJson  JSON array of enum values (optional).
 	 * @return A message indicating success or failure of the operation.
 	 */
-	private String createEnum(String name, String category, int size, String valuesJson, String programName) {
+	@HttpRoute(method=HttpMethod.POST, path = "/create_enum")
+	@McpTool(name = "create_enum", description = "Create a new enum in Ghidra.")
+	public String createEnum(@Param(name = "program", nullable = true) String programName, @Param(name = "name") String name,
+							 @Param(name = "category", nullable = true) String category, @Param(name = "size", nullable = true) Integer enumSize,
+							 @Param(name = "values", nullable = true) EnumValue[] values) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
 
+		if(enumSize == null)
+			enumSize = 4;
+
 		final AtomicReference<String> result = new AtomicReference<>();
+		final int size = enumSize;
 		try {
 			SwingUtilities.invokeAndWait(() -> {
 				int txId = program.startTransaction("Create Enum");
@@ -92,10 +78,7 @@ public final class CreateEnum extends Handler {
 					StringBuilder responseBuilder = new StringBuilder(
 							"Enum " + name + " created successfully in category " + path + " with size " + size + " bytes");
 
-					if (valuesJson != null && !valuesJson.isEmpty()) {
-						Gson gson = new Gson();
-						EnumValue[] values = gson.fromJson(valuesJson, EnumValue[].class);
-
+					if (values != null) {
 						int valuesAdded = 0;
 						for (EnumValue enumValue : values) {
 							if (enumValue.name == null || enumValue.name.isEmpty()) {
