@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,7 +15,6 @@ import com.sun.net.httpserver.HttpExchange;
 import ghidra.program.model.address.Address;
 import ghidra.util.Msg;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
-import io.modelcontextprotocol.spec.McpSchema.TextContent;
 
 /**
  * Utility methods for parsing HTTP requests and responses.
@@ -38,24 +38,24 @@ public final class ParseUtils {
     }
 
 	public static CallToolResult mcpSuccess(Object result) {
-		String message = (result instanceof String s) 
-			? s 
-			: new Gson().toJson(result);
+		List<String> message = (result instanceof String s) 
+			? Arrays.asList(s.split("\\r?\\n"))
+			: Arrays.asList(new Gson().toJson(result));
 
 		return CallToolResult.builder()
 			.isError(false)
-			.content(List.of(TextContent.builder(message).build()))
+			.textContent(message)
 			.build();
 	}
 
 	public static CallToolResult mcpError(Object error) {
-		String message = (error instanceof String s) 
-			? s 
-			: new Gson().toJson(error);
+		List<String> message = (error instanceof String s) 
+			? Arrays.asList(s.split("\\r?\\n"))
+			: Arrays.asList(new Gson().toJson(error));
 
 		return CallToolResult.builder()
 			.isError(true)
-			.content(List.of(TextContent.builder(message).build()))
+			.textContent(message)
 			.build();
 	}
 
