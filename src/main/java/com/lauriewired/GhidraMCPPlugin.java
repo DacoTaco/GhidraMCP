@@ -1,19 +1,18 @@
 package com.lauriewired;
 
 import java.io.IOException;
-import java.lang.reflect.Constructor;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.servlet.ServletContextHandler;
-import org.reflections.Reflections;
 
-import com.lauriewired.handlers.Handler;
+import com.lauriewired.endpoints.ArgumentBinder;
+import com.lauriewired.endpoints.ServerEndpoint;
+import com.lauriewired.handlers.EndpointFactory;
 import com.lauriewired.http.ApiServer;
 import com.lauriewired.mcp.GhidraMcpServer;
+import com.lauriewired.mcp.McpToolFactory;
 
 import ghidra.app.plugin.PluginCategoryNames;
 import ghidra.framework.main.ApplicationLevelPlugin;
@@ -231,37 +230,21 @@ public class GhidraMCPPlugin extends Plugin implements ApplicationLevelPlugin {
 			//build the router & mcp server which discover handlers via annotations from the given handlers
 
 			// Discover and register all command handlers
-			Reflections reflections = new Reflections("com.lauriewired.handlers");
-			Set<Class<? extends Handler>> handlerClasses = reflections.getSubTypesOf(Handler.class);
-			List<Object> handlers = new ArrayList<>();
-
-			for (Class<? extends Handler> handlerClass : handlerClasses) {
-				try {
-					Constructor<? extends Handler> constructor = handlerClass.getConstructor(PluginTool.class);
-					Handler handler = constructor.newInstance(this.tool);
-
-					Msg.info(GhidraMCPPlugin.class, "Registered command handler: " + handlerClass.getSimpleName());
-
-					// ONLY collect instances for HTTP servlet
-					handlers.add(handler);
-
-				} catch (NoSuchMethodException e) {
-					Msg.error(GhidraMCPPlugin.class, "Handler " + handlerClass.getName() + " must define a constructor (PluginTool tool)");
-				} catch (Exception e) {
-					Msg.error(GhidraMCPPlugin.class, "Failed to register command handler: " + handlerClass.getName(), e);
-				}
-			}
-
+			ArgumentBinder argumentBinder = new ArgumentBinder();
+			McpToolFactory mcpToolFactory = new McpToolFactory(argumentBinder);
+			EndpointFactory factory = new EndpointFactory(mcpToolFactory);
+			List<ServerEndpoint> endpoints = factory.create(this.tool);
+			
 			// add both servlets inside the context handler
 			ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
 			context.setContextPath("/");
 			context.addServlet(
-				new ApiServer(handlers).getServletHolder(),
+				new ApiServer(argumentBinder, endpoints).getServletHolder(),
 				"/*"
 			);
 
 			context.addServlet(
-				new GhidraMcpServer(handlers).getServletHolder(),
+				new GhidraMcpServer(endpoints).getServletHolder(),
 				"/mcp/*"
 			);
 

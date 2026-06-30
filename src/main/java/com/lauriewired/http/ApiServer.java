@@ -1,14 +1,14 @@
 package com.lauriewired.http;
 
 import java.io.IOException;
-import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.jetty.http.HttpMethod;
 import org.eclipse.jetty.servlet.ServletHolder;
 
 import com.google.gson.Gson;
+import com.lauriewired.endpoints.ArgumentBinder;
+import com.lauriewired.endpoints.ServerEndpoint;
 
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,30 +16,14 @@ import jakarta.servlet.http.HttpServletResponse;
 
 public class ApiServer extends HttpServlet {
 
-    private final List<HttpEndpoint> endpoints = new ArrayList<>();
-    private final HttpArgumentBinder binder = new HttpArgumentBinder();
+    private final List<ServerEndpoint> endpoints;
+    private final ArgumentBinder binder;
     private final Gson gson = new Gson();
     private final ServletHolder servlet = new ServletHolder(this);
 
-    public ApiServer(List<Object> handlers) {
-        // scan handlers → build endpoints
-        for (Object handler : handlers) {
-            Class<?> handlerClass = handler.getClass();
-
-            for (Method m : handlerClass.getDeclaredMethods()) {
-                HttpRoute route = m.getAnnotation(HttpRoute.class);
-                if (route == null) continue;
-
-                endpoints.add(
-                    new HttpEndpoint(
-                        handler,
-                        m,
-                        route.method(),
-                        route.path()
-                    )
-                );
-            }
-        }
+    public ApiServer(ArgumentBinder binder, List<ServerEndpoint> endpointInformation) {
+        this.endpoints = endpointInformation;
+        this.binder = binder;
     }
 
     public ServletHolder getServletHolder() {
@@ -80,9 +64,9 @@ public class ApiServer extends HttpServlet {
     protected void service(HttpServletRequest req, HttpServletResponse resp) throws IOException {
 
         String path = req.getRequestURI();
-        HttpEndpoint match = null;
+        ServerEndpoint match = null;
 
-        for (HttpEndpoint ep : endpoints) {
+        for (ServerEndpoint ep : endpoints) {
             if (ep.httpMethod != HttpMethod.fromString(req.getMethod()) || !ep.path.equals(path))
                 continue;
 

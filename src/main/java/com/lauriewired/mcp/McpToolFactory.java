@@ -12,8 +12,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.lauriewired.http.HttpArgumentBinder;
-import com.lauriewired.http.Param;
+import com.lauriewired.endpoints.ArgumentBinder;
+import com.lauriewired.endpoints.Param;
 import static com.lauriewired.util.ParseUtils.mcpError;
 import static com.lauriewired.util.ParseUtils.mcpSuccess;
 
@@ -22,9 +22,9 @@ import io.modelcontextprotocol.spec.McpSchema.Tool;
 
 public final class McpToolFactory {
 
-    private final HttpArgumentBinder argumentBinder;
+    private final ArgumentBinder argumentBinder;
 
-    public McpToolFactory(HttpArgumentBinder binder){
+    public McpToolFactory(ArgumentBinder binder){
         this.argumentBinder = binder;
     }
 

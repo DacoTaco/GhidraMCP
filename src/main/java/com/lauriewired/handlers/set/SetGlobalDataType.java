@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.eclipse.jetty.http.HttpMethod;
 
 import com.lauriewired.http.HttpRoute;
-import com.lauriewired.http.Param;
+import com.lauriewired.endpoints.Param;
 import com.lauriewired.mcp.McpTool;
 import static com.lauriewired.util.GhidraUtils.resolveDataType;
 import static com.lauriewired.util.ParseUtils.*;

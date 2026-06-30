@@ -1,4 +1,4 @@
-package com.lauriewired.http;
+package com.lauriewired.endpoints;
 
 import java.io.BufferedReader;
 import java.lang.reflect.Array;
@@ -13,7 +13,7 @@ import com.google.gson.Gson;
 import io.modelcontextprotocol.spec.McpSchema.CallToolRequest;
 import jakarta.servlet.http.HttpServletRequest;
 
-public final class HttpArgumentBinder {
+public final class ArgumentBinder {
 
     private final Gson gson = new Gson();
 

@@ -1,4 +1,4 @@
-package com.lauriewired.http;
+package com.lauriewired.endpoints;
 
 public enum ParamLocation {
     Auto,

@@ -9,7 +9,7 @@ import org.eclipse.jetty.http.HttpMethod;
 
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
-import com.lauriewired.http.Param;
+import com.lauriewired.endpoints.Param;
 import com.lauriewired.mcp.McpTool;
 import com.lauriewired.util.EnumUtils.EnumValue;
 

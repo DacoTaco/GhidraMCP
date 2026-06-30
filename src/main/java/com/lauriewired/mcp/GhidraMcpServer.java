@@ -1,14 +1,12 @@
 package com.lauriewired.mcp;
 
-import java.lang.reflect.Method;
 import java.util.List;
 
 import org.eclipse.jetty.servlet.ServletHolder;
 
-import com.lauriewired.http.HttpArgumentBinder;
+import com.lauriewired.endpoints.ServerEndpoint;
 
 import io.modelcontextprotocol.server.McpServer;
-import io.modelcontextprotocol.server.McpServerFeatures.SyncToolSpecification;
 import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.server.transport.HttpServletStreamableServerTransportProvider;
 import io.modelcontextprotocol.spec.McpSchema.ServerCapabilities;
@@ -18,7 +16,7 @@ public class GhidraMcpServer {
     private ServletHolder servlet;
     private McpSyncServer mcpServer;
 
-    public GhidraMcpServer(List<Object> handlers) {
+    public GhidraMcpServer(List<ServerEndpoint> endpoints) {
         //setup the MCP server transport
         //because the context is set to /mcp, the transport will listen to everything under the context path
         this.transport = HttpServletStreamableServerTransportProvider
@@ -47,20 +45,12 @@ public class GhidraMcpServer {
 
         // Create servlet
         servlet = new ServletHolder(transport);
+        for (ServerEndpoint endpoint : endpoints)
+        {
+            if(endpoint == null || endpoint.toolInformation.isEmpty())
+                continue;
 
-        McpToolFactory toolFactory = new McpToolFactory(new HttpArgumentBinder());
-        for (Object handler : handlers) {
-            Class<?> handlerClass = handler.getClass();
-
-            for (Method m : handlerClass.getDeclaredMethods()) {
-                McpTool annotation = m.getAnnotation(McpTool.class);
-                if (annotation == null) continue;
-
-                SyncToolSpecification specs = toolFactory.create(handler, m);
-                if(specs == null) continue;
-
-                mcpServer.addTool(specs);
-            }
+            mcpServer.addTool(endpoint.toolInformation.get());
         }
     }
 
