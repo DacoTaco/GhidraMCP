@@ -1,9 +1,9 @@
 // Builds a Ghidra Extension for a given Ghidra installation.
 //
-// An absolute path to the Ghidra installation directory must be supplied either by setting the 
+// An absolute path to the Ghidra installation directory must be supplied either by setting the
 // GHIDRA_INSTALL_DIR environment variable or Gradle project property:
 //
-//     > export GHIDRA_INSTALL_DIR=<Absolute path to Ghidra> 
+//     > export GHIDRA_INSTALL_DIR=<Absolute path to Ghidra>
 //     > gradle
 //
 //         or
@@ -60,6 +60,45 @@ java {
 	targetCompatibility = JavaVersion.VERSION_21
 }
 
+sourceSets {
+    scripts {
+        java {
+            srcDir 'src/scripts/java'
+        }
+
+        resources {
+            srcDir 'src/scripts/resources'
+        }
+
+        compileClasspath += sourceSets.main.output + configurations.runtimeClasspath
+        runtimeClasspath += output + compileClasspath
+    }
+}
+
 tasks.withType(JavaCompile).configureEach {
 	options.compilerArgs += ["-Xlint:deprecation", "-Xlint:unchecked"]
+}
+
+tasks.register('generatePythonClient', JavaExec) {
+    group = 'build'
+    description = 'Generates the Python MCP client.'
+
+    dependsOn tasks.named('buildExtension')
+
+    classpath = sourceSets.scripts.runtimeClasspath
+    mainClass = 'com.lauriewired.GeneratePythonMain'
+
+    doFirst {
+        mkdir("${buildDir}/generated/python")
+    }
+
+    args = [
+        "${project.projectDir}/src/scripts/python/header.py",
+        "${project.projectDir}/src/scripts/python/footer.py",
+        "${rootProject.projectDir}/bridge_mcp_ghidra.py"
+    ]
+}
+
+tasks.named("buildExtension") {
+    finalizedBy("generatePythonClient")
 }

@@ -61,3 +61,4 @@ dependency-reduced-pom.xml
 .gradle/
 build/
 dist/
+bridge_mcp_ghidra.py
