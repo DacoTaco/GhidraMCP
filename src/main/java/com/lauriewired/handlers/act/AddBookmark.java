@@ -38,9 +38,10 @@ public class AddBookmark extends Handler {
             """
     )
     @HttpRoute(method = HttpMethod.POST, path = "/add_bookmark")
-	public String addBookmark(@Param(name="program", nullable=true) String programName, @Param(name="address") String addressStr, 
-                               @Param(name="category") String category, @Param(name="comment") String comment,
-                               @Param(name="type") String type) {
+	public String addBookmark(@Param(name="program", nullable=true) String programName, @Param(name="address", description="The address to create the bookmark at.") String addressStr, 
+                               @Param(name="category", description="The category of the bookmark.") String category, @Param(name="comment", description="The comment for the bookmark.") String comment,
+                               @Param(name="type", nullable=true, description="Bookmark type (default: Note). Available types: Note, Info, Warning, Error, Analysis.") String type) {
+		final String resolvedType = (type == null) ? "Note" : type;
 		Program currentProgram = getProgramByName(programName);
 		if (currentProgram == null)
 			return "No active program";
@@ -53,7 +54,7 @@ public class AddBookmark extends Handler {
 				try {
 					Address address = currentProgram.getAddressFactory().getAddress(addressStr);
 					BookmarkManager bookmarkManager = currentProgram.getBookmarkManager();
-					bookmarkManager.setBookmark(address, type, category, comment);
+					bookmarkManager.setBookmark(address, resolvedType, category, comment);
 					result.set("Bookmark created successfully at " + addressStr);
 					success = true;
 				} catch (Exception e) {

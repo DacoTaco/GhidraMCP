@@ -42,8 +42,8 @@ public final class ListDefinedStrings extends Handler {
 	 */
 	@HttpRoute(method = HttpMethod.GET, path = "/strings")
     @McpTool(name = "list_strings", description = "List all defined strings in the program with their addresses.")
-	public String listDefinedStrings(@Param(name = "offset", nullable = true) Integer offset, @Param(name = "limit", nullable = true) Integer limit, 
-									 @Param(name = "filter", nullable = true) String filter, @Param(name = "program", nullable = true) String programName) {
+	public String listDefinedStrings(@Param(name = "offset", nullable = true, description = "Pagination offset (default: 0).") Integer offset, @Param(name = "limit", nullable = true, description = "Maximum number of strings to return (default: 2000).") Integer limit, 
+									 @Param(name = "filter", nullable = true, description = "Optional filter to match within string content.") String filter, @Param(name = "program", nullable = true) String programName) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";

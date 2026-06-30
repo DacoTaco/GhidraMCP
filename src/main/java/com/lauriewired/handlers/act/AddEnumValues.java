@@ -50,8 +50,8 @@ public final class AddEnumValues extends Handler {
 	 */
 	@HttpRoute(method = HttpMethod.POST, path = "/add_enum_values")
 	@McpTool(name = "add_enum_values", description = "Add values to an existing enum.")
-	public String addEnumValues(@Param(name = "program", nullable = true) String programName, @Param(name = "enum_name") String enumName, 
-								 @Param(name = "category", nullable = true) String category, @Param(name = "values") EnumValue[] values) {
+	public String addEnumValues(@Param(name = "program", nullable = true) String programName, @Param(name = "enum_name", description = "The name of the enum to modify.") String enumName, 
+								 @Param(name = "category", nullable = true, description = "The category path for the enum. Defaults to root.") String category, @Param(name = "values", description = "List of value dicts with 'name', 'value', and optionally 'comment'. Example: [{'name': 'VALUE1', 'value': 0}]") EnumValue[] values) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";

@@ -35,7 +35,7 @@ public final class GetBytes extends Handler {
 	 */
 	@HttpRoute(method = HttpMethod.GET, path = "/get_bytes")
 	@McpTool(name = "get_bytes", description = "Read raw bytes from memory and return a hex dump.")
-	public String getBytes(@Param(name = "address") String addressStr, @Param(name = "size", nullable = true) Integer size, @Param(name = "program", nullable = true) String programName) {
+	public String getBytes(@Param(name = "address", description = "Start address in hex notation (e.g. 0x1401003A0).") String addressStr, @Param(name = "size", nullable = true, description = "Number of bytes to read (default: 1).") Integer size, @Param(name = "program", nullable = true) String programName) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";

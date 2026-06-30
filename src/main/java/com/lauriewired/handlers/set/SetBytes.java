@@ -45,7 +45,7 @@ public final class SetBytes extends Handler {
      */
     @HttpRoute(method=HttpMethod.POST, path="/set_bytes")
     @McpTool(name="set_bytes", description="Writes a sequence of bytes to the specified address in the program's memory.")
-    public String writeBytesToAddress(@Param(name="address") String addressStr, @Param(name="bytes") String bytesStr, @Param(name="program", nullable=true) String programName) {
+    public String writeBytesToAddress(@Param(name="address", description="Destination address (e.g. 0x140001000).") String addressStr, @Param(name="bytes", description="Space-separated bytes in hexadecimal format (e.g. 90 90 90 90).") String bytesStr, @Param(name="program", nullable=true) String programName) {
         Program program = getProgramByName(programName);
         if (program == null)
             return "No active program";

@@ -41,8 +41,8 @@ public final class GetXrefsFrom extends Handler {
 	 */
 	@HttpRoute(method = HttpMethod.GET, path = "/xrefs_from")
     @McpTool(name = "get_xrefs_from", description = "Get all references from the specified address (xref from)")
-	public String getXrefsFrom(@Param(name = "program", nullable = true) String programName, @Param(name = "address") String addressStr,
-            				   @Param(name = "offset", nullable = true) Integer offset, @Param(name = "limit", nullable = true) Integer limit) {
+	public String getXrefsFrom(@Param(name = "program", nullable = true) String programName, @Param(name = "address", description = "Source address in hex format (e.g. 0x1400010a0).") String addressStr,
+            				   @Param(name = "offset", nullable = true, description = "Pagination offset (default: 0).") Integer offset, @Param(name = "limit", nullable = true, description = "Maximum number of references to return (default: 100).") Integer limit) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";

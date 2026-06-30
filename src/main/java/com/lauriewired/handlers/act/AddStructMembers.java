@@ -49,8 +49,8 @@ public final class AddStructMembers extends Handler {
 	 */
 	@HttpRoute(method=HttpMethod.POST, path="/add_struct_members")
 	@McpTool(name = "add_struct_members", description = "Add members to an existing structure.")
-	public String addStructMembers(@Param(name="program", nullable=true) String programName, @Param(name="struct_name") String structName, 
-	                               @Param(name="category", nullable=true) String category, @Param(name="members") StructMember[] members) {
+	public String addStructMembers(@Param(name="program", nullable=true) String programName, @Param(name="struct_name", description="The name of the structure to modify.") String structName, 
+	                               @Param(name="category", nullable=true, description="The category path for the structure. Defaults to root.") String category, @Param(name="members", description="List of member dicts with 'name', 'type', and optionally 'offset' and 'comment'. Type should be a builtin C type or Ghidra struct name.") StructMember[] members) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";

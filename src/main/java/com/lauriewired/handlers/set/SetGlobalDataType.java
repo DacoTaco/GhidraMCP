@@ -52,9 +52,10 @@ public final class SetGlobalDataType extends Handler {
 
 	@HttpRoute(method=HttpMethod.POST, path="/set_global_data_type")
 	@McpTool(name="set_global_data_type", description="Set the data type of a global variable or data at a specific memory address.")
-	public String handleRequest(@Param(name="address") String addressStr, @Param(name="data_type") String dataTypeName, @Param(name="lenght", nullable=true) Integer length,
-							  @Param(name="clear_mode") String clearModeStr, @Param(name="program", nullable=true) String programName){
+	public String handleRequest(@Param(name="address", description="The memory address in hex format (e.g. 0x401000).") String addressStr, @Param(name="data_type", description="The name of the data type to apply (e.g. int, char*, MyStruct).") String dataTypeName, @Param(name="length", nullable=true, description="Optional length for dynamic data types (-1 to let the type determine).") Integer length,
+							  @Param(name="clear_mode", nullable=true, description="How to handle conflicting data: CHECK_FOR_SPACE (default), CLEAR_SINGLE_DATA, CLEAR_ALL_UNDEFINED_CONFLICT_DATA, CLEAR_ALL_DEFAULT_CONFLICT_DATA, CLEAR_ALL_CONFLICT_DATA.") String clearModeStr, @Param(name="program", nullable=true) String programName){
 		length = length == null ? -1 : length;
+		if (clearModeStr == null) clearModeStr = "CHECK_FOR_SPACE";
 
 		ClearDataMode clearMode = parseClearDataMode(clearModeStr);
 

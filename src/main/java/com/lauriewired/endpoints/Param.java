@@ -13,4 +13,5 @@ public @interface Param {
     boolean nullable() default false;
     ParamLocation location() default ParamLocation.Auto;
     String name();
+    String description() default "";
 }

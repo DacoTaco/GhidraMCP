@@ -81,15 +81,18 @@ public final class McpToolFactory {
 
             properties.put(
                 param.name(),
-                createPropertySchema(parameter.getType(), new HashSet<>())
+                createPropertySchema(parameter.getType(), new HashSet<>(), param.description())
             );
         }
 
         return properties;
     }
 
-    private Map<String, Object> createPropertySchema(Class<?> type, Set<Class<?>> visited) {
+    private Map<String, Object> createPropertySchema(Class<?> type, Set<Class<?>> visited, String description) {
         Map<String, Object> schema = new HashMap<>();
+
+        if (description != null &&!description.isEmpty()) 
+            schema.put("description", description);
 
         if (type == null) {
             schema.put("type", "object");
@@ -133,7 +136,7 @@ public final class McpToolFactory {
         // arrays
         if (type.isArray()) {
             schema.put("type", "array");
-            schema.put("items", createPropertySchema(type.getComponentType(), visited));
+            schema.put("items", createPropertySchema(type.getComponentType(), visited, ""));
             return schema;
         }
 
@@ -150,7 +153,7 @@ public final class McpToolFactory {
         schema.put("type", "object");
         Map<String, Object> props = new HashMap<>();
         for (Field field : type.getDeclaredFields()) {
-            props.put(field.getName(), createPropertySchema(field.getType(), visited));
+            props.put(field.getName(), createPropertySchema(field.getType(), visited, ""));
         }
 
         schema.put("properties", props);

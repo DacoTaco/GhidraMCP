@@ -59,8 +59,8 @@ public final class AddClassMembers extends Handler {
 	 */
 	@McpTool(name = "add_class_members", description = "Add members to an existing C++ class.")
 	@HttpRoute(method = HttpMethod.POST, path = "/add_class_members")
-	public String addClassMembers(@Param(name = "class_name") String className, @Param(name = "parent_namespace", nullable = true) String parentNamespace,
-								  @Param(name = "members") StructMember[] members, @Param(name = "program", nullable = true) String programName) {
+	public String addClassMembers(@Param(name = "class_name", description = "The name of the class to modify.") String className, @Param(name = "parent_namespace", nullable = true, description = "The parent namespace where the class is located (optional).") String parentNamespace,
+								  @Param(name = "members", description = "List of member dicts with 'name', 'type', and optionally 'offset' and 'comment'. Example: [{'name': 'health', 'type': 'float'}]") StructMember[] members, @Param(name = "program", nullable = true) String programName) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";

@@ -48,7 +48,7 @@ public final class SetLocalVariableType extends Handler {
 	@HttpRoute(method=HttpMethod.POST, path="/set_local_variable_type")
 	@McpTool(name="set_local_variable_type", description="Set a local variable's type.")
 	public String handleRequest(@Param(name="function_address") String functionAddress, @Param(name="variable_name") String variableName, 
-								@Param(name="new_type") String newType, @Param(name="program") String programName) {
+								@Param(name="new_type") String newType, @Param(name="program", nullable=true) String programName) {
 		// Capture detailed information about setting the type
 		StringBuilder responseMsg = new StringBuilder();
 		responseMsg.append("Setting variable type: ").append(variableName)

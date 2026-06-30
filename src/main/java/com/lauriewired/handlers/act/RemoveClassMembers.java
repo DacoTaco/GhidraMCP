@@ -52,8 +52,8 @@ public final class RemoveClassMembers extends Handler {
 	 */
 	@HttpRoute(method=HttpMethod.POST, path="/remove_class_members")
 	@McpTool(name = "remove_class_members", description = "Remove members from an existing C++ class.")
-    public String removeClassMembers(@Param(name="class_name") String className, @Param(name="parent_namespace", nullable=true) String parentNamespace, 
-									 @Param(name="members") String[] members, @Param(name="program", nullable=true) String programName) {
+    public String removeClassMembers(@Param(name="class_name", description="The name of the class to modify.") String className, @Param(name="parent_namespace", nullable=true, description="The parent namespace where the class is located (optional).") String parentNamespace, 
+									 @Param(name="members", description="List of member names to remove from the class. Example: ['old_member', 'unused_field']") String[] members, @Param(name="program", nullable=true) String programName) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";

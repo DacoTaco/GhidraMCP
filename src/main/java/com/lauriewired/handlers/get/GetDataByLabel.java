@@ -42,7 +42,7 @@ public final class GetDataByLabel extends Handler {
 	 */
 	@HttpRoute(method=HttpMethod.GET, path="/get_data_by_label")
     @McpTool(name="get_data_by_label", description = "Get information about a data label in the current program")
-    public String handle(@Param(name="program", nullable=true) String programName, @Param(name="label") String label){
+    public String handle(@Param(name="program", nullable=true, description="Program name to query.") String programName, @Param(name="label", description="Exact symbol / label name.") String label){
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";

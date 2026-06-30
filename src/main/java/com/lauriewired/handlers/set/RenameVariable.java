@@ -54,7 +54,7 @@ public final class RenameVariable extends Handler {
 	@HttpRoute(method=HttpMethod.POST, path="/renameVariable")
 	@McpTool(name="rename_variable", description="Rename a local variable within a function.")
 	public String renameVariableInFunction(@Param(name="functionName") String functionName, @Param(name="oldName") String oldVarName, 
-										   @Param(name="newName") String newVarName, @Param(name="newName", nullable=true) String programName) {
+										   @Param(name="newName") String newVarName, @Param(name="program", nullable=true) String programName) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";

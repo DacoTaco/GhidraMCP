@@ -38,9 +38,9 @@ public final class GetFunctionXrefs extends Handler {
 	 * @return a string containing the references or an error message
 	 */
 	@HttpRoute(method = HttpMethod.GET, path = "/function_xrefs")
-    @McpTool(name = "function_xrefs", description = "Get all references to the specified function by name")
-    public String getFunctionXrefs(@Param(name = "program", nullable=true) String programName, @Param(name = "name") String functionName,
-            @Param(name = "offset", nullable = true) Integer offset, @Param(name = "limit", nullable = true) Integer limit
+    @McpTool(name = "get_function_xrefs", description = "Get all references to the specified function by name")
+    public String getFunctionXrefs(@Param(name = "program", nullable=true) String programName, @Param(name = "name", description = "Function name to search for.") String functionName,
+            @Param(name = "offset", nullable = true, description = "Pagination offset (default: 0).") Integer offset, @Param(name = "limit", nullable = true, description = "Maximum number of references to return (default: 100).") Integer limit
     ) {
 		Program program = getProgramByName(programName);
 		if (program == null)

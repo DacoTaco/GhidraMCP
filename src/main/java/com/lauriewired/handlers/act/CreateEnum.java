@@ -47,9 +47,9 @@ public final class CreateEnum extends Handler {
 	 */
 	@HttpRoute(method=HttpMethod.POST, path = "/create_enum")
 	@McpTool(name = "create_enum", description = "Create a new enum in Ghidra.")
-	public String createEnum(@Param(name = "program", nullable = true) String programName, @Param(name = "name") String name,
-							 @Param(name = "category", nullable = true) String category, @Param(name = "size", nullable = true) Integer enumSize,
-							 @Param(name = "values", nullable = true) EnumValue[] values) {
+	public String createEnum(@Param(name = "program", nullable = true) String programName, @Param(name = "name", description = "The name of the new enum.") String name,
+							 @Param(name = "category", nullable = true, description = "The category path for the enum (e.g., /my_enums). Defaults to root.") String category, @Param(name = "size", nullable = true, description = "The size of the enum in bytes (default: 4).") Integer enumSize,
+							 @Param(name = "values", nullable = true, description = "List of value dicts with 'name', 'value', and optionally 'comment'. Example: [{'name': 'VALUE1', 'value': 0}]") EnumValue[] values) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";

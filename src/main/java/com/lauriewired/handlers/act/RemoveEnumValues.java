@@ -46,8 +46,8 @@ public final class RemoveEnumValues extends Handler {
 	 */
 	@HttpRoute(method=HttpMethod.POST, path="/remove_enum_values")
 	@McpTool(name = "remove_enum_values", description = "Remove values from an existing enum.")
-    public String removeEnumValues(@Param(name="enum_name") String enumName, @Param(name="category", nullable=true) String category, 
-								   @Param(name="values") String[] values, @Param(name="program", nullable=true) String programName) {
+    public String removeEnumValues(@Param(name="enum_name", description="The name of the enum to modify.") String enumName, @Param(name="category", nullable=true, description="The category path for the enum (optional, defaults to root).") String category, 
+								   @Param(name="values", description="List of value names to remove from the enum. Example: ['OLD_VALUE', 'DEPRECATED_OPTION']") String[] values, @Param(name="program", nullable=true) String programName) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";

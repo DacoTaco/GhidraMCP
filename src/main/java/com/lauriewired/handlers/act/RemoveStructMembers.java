@@ -1,22 +1,16 @@
 package com.lauriewired.handlers.act;
 
 import java.lang.reflect.InvocationTargetException;
-import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 import javax.swing.SwingUtilities;
 
 import org.eclipse.jetty.http.HttpMethod;
 
-import com.google.gson.Gson;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
 import com.lauriewired.endpoints.Param;
 import com.lauriewired.mcp.McpTool;
-import static com.lauriewired.util.ParseUtils.convertObject;
-import static com.lauriewired.util.ParseUtils.mcpError;
-import static com.lauriewired.util.ParseUtils.mcpSuccess;
 
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.data.CategoryPath;
@@ -25,8 +19,6 @@ import ghidra.program.model.data.DataTypeComponent;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.Structure;
 import ghidra.program.model.listing.Program;
-import io.modelcontextprotocol.server.McpServerFeatures.SyncToolSpecification;
-import io.modelcontextprotocol.spec.McpSchema.Tool;
 
 /**
  * Handler for removing members from a structure in Ghidra.
@@ -55,8 +47,8 @@ public final class RemoveStructMembers extends Handler {
 	 */
 	@HttpRoute(method=HttpMethod.POST, path="/remove_struct_members")
 	@McpTool(name="remove_struct_members", description="Remove members from an existing struct.")
-	public String removeStructMembers(@Param(name="struct_name") String structName, @Param(name="category", nullable=true) String category, 
-									   @Param(name="members") String[] members, @Param(name="category", nullable=true) String programName) {
+	public String removeStructMembers(@Param(name="struct_name", description="The name of the struct to modify.") String structName, @Param(name="category", nullable=true, description="The category path for the struct (optional, defaults to root).") String category, 
+									   @Param(name="members", description="List of member names to remove from the struct. Example: ['old_field', 'unused_member']") String[] members, @Param(name="program", nullable=true) String programName) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";

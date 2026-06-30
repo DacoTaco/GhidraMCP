@@ -46,7 +46,7 @@ public final class GetStruct extends Handler {
 	 */
 	@HttpRoute(method = HttpMethod.GET, path = "/get_struct")
     @McpTool(name = "get_struct", description = "Get a struct's definition by name and optional category")
-	public String getStruct(@Param(name = "name") String structName, @Param(name = "category", nullable=true) String category, @Param(name = "program", nullable=true) String programName) {
+	public String getStruct(@Param(name = "name", description = "The name of the structure.") String structName, @Param(name = "category", nullable=true, description = "The category path for the structure. Defaults to root.") String category, @Param(name = "program", nullable=true) String programName) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";

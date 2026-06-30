@@ -41,10 +41,10 @@ public final class SearchBytes extends Handler {
 	 * @param limit    The maximum number of results to return.
 	 * @return A string containing the search results, formatted for pagination.
 	 */
-	@HttpRoute(method = HttpMethod.GET, path = "/segments")
-    @McpTool(name = "list_segments", description = "List all memory segments in the program with pagination.")
-	public String searchBytes(@Param(name = "bytes") String bytesHex, @Param(name = "program", nullable = true) String programName, 
-							  @Param(name = "offset", nullable = true) Integer offset, @Param(name = "limit", nullable = true) Integer limit) {
+	@HttpRoute(method = HttpMethod.GET, path = "/search_bytes")
+    @McpTool(name = "search_bytes", description = "Search the whole program for a specific byte sequence.")
+	public String searchBytes(@Param(name = "bytes", description = "Byte sequence encoded as a hex string (e.g. DEADBEEF or DE AD BE EF).") String bytesHex, @Param(name = "program", nullable = true) String programName, 
+							  @Param(name = "offset", nullable = true, description = "Pagination offset for results (default: 0).") Integer offset, @Param(name = "limit", nullable = true, description = "Maximum number of hit addresses to return (default: 100).") Integer limit) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
