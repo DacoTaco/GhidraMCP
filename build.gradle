@@ -33,6 +33,17 @@ if (ghidraInstallDir) {
 	throw new GradleException("GHIDRA_INSTALL_DIR is not defined!")
 }
 
+buildExtension {
+    exclude '.github/**'
+    exclude 'images/**'
+    exclude 'Dockerfile'
+    exclude 'Doxyfile'
+    exclude 'README.md'
+    exclude 'LICENSE'
+    exclude 'DOCUMENTATION.md'
+    exclude 'bridge_mcp_ghidra.py'
+}
+
 repositories {
 	mavenCentral()
 }
