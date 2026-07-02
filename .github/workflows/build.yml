@@ -26,11 +26,15 @@ jobs:
 
     - name: Download Ghidra
       run: |
-        wget --no-verbose -O ghidra.zip https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_${{ env.GHIDRA_VERSION }}_build/ghidra_${{ env.GHIDRA_VERSION }}_PUBLIC_${{ env.GHIDRA_DATE }}.zip
-        7z x -bd ghidra.zip
+        mkdir -p "$RUNNER_TEMP/ghidra"
+
+        wget --no-verbose -O "$RUNNER_TEMP/ghidra/ghidra.zip" \
+          https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_${{ env.GHIDRA_VERSION }}_build/ghidra_${{ env.GHIDRA_VERSION }}_PUBLIC_${{ env.GHIDRA_DATE }}.zip
+
+        7z x -bd "$RUNNER_TEMP/ghidra/ghidra.zip" -o"$RUNNER_TEMP/ghidra"
 
     - name: Set GHIDRA_INSTALL_DIR
-      run: echo "GHIDRA_INSTALL_DIR=$PWD/ghidra_${{ env.GHIDRA_VERSION }}_PUBLIC" >> $GITHUB_ENV
+      run: echo "GHIDRA_INSTALL_DIR=$RUNNER_TEMP/ghidra/ghidra_${{ env.GHIDRA_VERSION }}_PUBLIC" >> $GITHUB_ENV
 
     - name: Build with Gradle
       run: |
@@ -49,7 +53,7 @@ jobs:
         cp bridge_mcp_ghidra.py release/
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v7
       with:
         name: GhidraMCP-artifact
         path: release/*
