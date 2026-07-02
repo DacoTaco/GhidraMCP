@@ -30,7 +30,7 @@ jobs:
         7z x -bd ghidra.zip
 
     - name: Set GHIDRA_INSTALL_DIR
-      run: echo "GHIDRA_INSTALL_DIR=$PWD/ghidra_${{ env.GHIDRA_VERSION }}_PUBLIC/Ghidra" >> $GITHUB_ENV
+      run: echo "GHIDRA_INSTALL_DIR=$PWD/ghidra_${{ env.GHIDRA_VERSION }}_PUBLIC" >> $GITHUB_ENV
 
     - name: Build with Gradle
       run: |
