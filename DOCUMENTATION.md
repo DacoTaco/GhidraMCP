@@ -7,7 +7,7 @@ This project now includes comprehensive Javadoc documentation generated with Dox
 ## Viewing Documentation
 
 ### Local HTML Documentation
-Open `docs/html/index.html` in your web browser to view the complete documentation.
+Open `docs/html/index.html` in your web browser to view the complete generated documentation.
 
 ### Key Documentation Pages
 - **Main Class**: [GhidraMCPPlugin](docs/html/classcom_1_1lauriewired_1_1_ghidra_m_c_p_plugin.html)
@@ -15,17 +15,28 @@ Open `docs/html/index.html` in your web browser to view the complete documentati
 - **All Classes**: [Class List](docs/html/annotated.html)
 - **File Browser**: [Source Files](docs/html/files.html)
 
+## Architecture
+
+### Embedded Plugin Server
+The Ghidra plugin starts an embedded HTTP server whenever the plugin is enabled in Ghidra. This server provides:
+- direct MCP access at `/mcp`
+- standard Ghidra REST endpoints for program analysis
+- default port `8080`
+
+### Compatibility Wrapper
+The Python script `bridge_mcp_ghidra.py` is optional. It is useful when a client requires a local command or stdio transport, but it is not required for normal plugin operation.
+
 ## Documentation Structure
 
 ### Class Documentation
-Each class includes:
+Each generated class page contains:
 - **Detailed Description**: Purpose and functionality overview
 - **Usage Examples**: Code snippets showing proper usage
 - **Thread Safety Notes**: Information about concurrent access
 - **See Also References**: Links to related classes and methods
 
 ### Method Documentation
-Each method provides:
+Each method page includes:
 - **Parameter Details**: Type and purpose of each parameter
 - **Return Values**: What the method returns and possible values
 - **Exception Information**: When and why exceptions might be thrown
@@ -33,7 +44,7 @@ Each method provides:
 - **Cross-References**: Related methods and classes
 
 ### API Endpoint Documentation
-HTTP endpoints include:
+The documentation covers:
 - **Request Format**: HTTP method, URL pattern, parameters
 - **Response Format**: Expected output structure
 - **Error Conditions**: Common failure scenarios
@@ -65,16 +76,16 @@ The `Doxyfile` contains all configuration options:
 ```java
 /**
  * Brief description of the method or class.
- * 
+ *
  * Detailed description explaining the purpose, behavior,
  * and any important implementation details.
- * 
+ *
  * <h3>Usage Example:</h3>
  * <pre>{@code
  * // Example code showing proper usage
  * String result = methodName("parameter");
  * }</pre>
- * 
+ *
  * @param paramName Description of parameter purpose and constraints
  * @return Description of return value and possible states
  * @throws ExceptionType When this exception occurs
@@ -116,9 +127,7 @@ The `Doxyfile` contains all configuration options:
 - `listDefinedStrings(...)` - Extract string constants
 
 ### Utility Methods
-- `parseQueryParams(HttpExchange)` - Parse URL parameters
 - `paginateList(List, int, int)` - Apply pagination to results
-- `sendResponse(HttpExchange, String)` - Send HTTP responses
 
 ## Contributing to Documentation
 
