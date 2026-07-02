@@ -204,8 +204,6 @@ public class GhidraMCPPlugin extends Plugin implements ApplicationLevelPlugin {
 	 * All endpoints return plain text responses with UTF-8 encoding.
 	 * 
 	 * @throws IOException if the server cannot bind to the configured port
-	 * @see #sendResponse(HttpExchange, String)
-	 * @see #parseQueryParams(HttpExchange)
 	 */
 	private void startHeadlessServer() throws IOException {
 		synchronized (SHARED_LOCK) {

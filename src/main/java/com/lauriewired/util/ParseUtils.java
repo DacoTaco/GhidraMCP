@@ -1,19 +1,11 @@
 package com.lauriewired.util;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import com.google.gson.Gson;
-import com.sun.net.httpserver.HttpExchange;
 
 import ghidra.program.model.address.Address;
-import ghidra.util.Msg;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 
 /**
@@ -24,18 +16,6 @@ import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
  * and send HTTP responses.
  */
 public final class ParseUtils {
-
-	/**
-     * Converts an object (such as MCP arguments) into another type.
-     *
-     * @param value source object
-     * @param clazz target class
-     * @return converted object
-     */
-    public static <T> T convertObject(Object value, Class<T> classInfo) {
-		Gson gson = new Gson();
-		return gson.fromJson(gson.toJson(value), classInfo);
-    }
 
 	public static CallToolResult mcpSuccess(Object result) {
 		List<String> message = (result instanceof String s) 
@@ -77,23 +57,6 @@ public final class ParseUtils {
 		}
 		List<String> sub = items.subList(start, end);
 		return String.join("\n", sub);
-	}
-
-	/**
-	 * Parse an integer from a string, returning a default value if parsing fails.
-	 * 
-	 * @param val          The string to parse.
-	 * @param defaultValue The default value to return if parsing fails.
-	 * @return The parsed integer or the default value if parsing fails.
-	 */
-	public static int parseIntOrDefault(String val, int defaultValue) {
-		if (val == null)
-			return defaultValue;
-		try {
-			return Integer.parseInt(val);
-		} catch (NumberFormatException e) {
-			return defaultValue;
-		}
 	}
 
 	/**
@@ -183,82 +146,5 @@ public final class ParseUtils {
 			out[i] = (byte) Integer.parseInt(hex.substring(i * 2, i * 2 + 2), 16);
 		}
 		return out;
-	}
-
-	//Old functions to remove
-	/**
-	 * Parse query parameters from the request URI.
-	 * 
-	 * @param exchange The HttpExchange object containing the request.
-	 * @return A map of query parameters where the key is the parameter name
-	 *         and the value is the parameter value.
-	 *         For example, for a query string "offset=10&limit=100",
-	 *         the map will contain {"offset": "10", "limit": "100"}
-	 */
-	public static Map<String, String> parseQueryParams(HttpExchange exchange) {
-		Map<String, String> result = new HashMap<>();
-		String query = exchange.getRequestURI().getQuery(); // e.g. offset=10&limit=100
-		if (query != null) {
-			String[] pairs = query.split("&");
-			for (String p : pairs) {
-				String[] kv = p.split("=");
-				if (kv.length == 2) {
-					// URL decode parameter values
-					try {
-						String key = URLDecoder.decode(kv[0], StandardCharsets.UTF_8);
-						String value = URLDecoder.decode(kv[1], StandardCharsets.UTF_8);
-						result.put(key, value);
-					} catch (Exception e) {
-						Msg.error(ParseUtils.class, "Error decoding URL parameter", e);
-					}
-				}
-			}
-		}
-		return result;
-	}
-
-	/**
-	 * Parse POST parameters from the request body.
-	 * 
-	 * @param exchange The HttpExchange object containing the request.
-	 * @return A map of POST parameters where the key is the parameter name
-	 *         and the value is the parameter value.
-	 *         For example, for a body "offset=10&limit=100",
-	 *         the map will contain {"offset": "10", "limit": "100"}
-	 */
-	public static Map<String, String> parsePostParams(HttpExchange exchange) throws IOException {
-		byte[] body = exchange.getRequestBody().readAllBytes();
-		String bodyStr = new String(body, StandardCharsets.UTF_8);
-		Map<String, String> params = new HashMap<>();
-		for (String pair : bodyStr.split("&")) {
-			String[] kv = pair.split("=");
-			if (kv.length == 2) {
-				// URL decode parameter values
-				try {
-					String key = URLDecoder.decode(kv[0], StandardCharsets.UTF_8);
-					String value = URLDecoder.decode(kv[1], StandardCharsets.UTF_8);
-					params.put(key, value);
-				} catch (Exception e) {
-					Msg.error(ParseUtils.class, "Error decoding URL parameter", e);
-				}
-			}
-		}
-		return params;
-	}
-
-	/**
-	 * Send a plain text response to the HTTP exchange.
-	 * 
-	 * @param exchange The HttpExchange object to send the response to.
-	 * @param response The response string to send.
-	 * @throws IOException If an I/O error occurs while sending the response.
-	 */
-	public static void sendResponse(HttpExchange exchange, String response) throws IOException {
-		byte[] bytes = response.getBytes(StandardCharsets.UTF_8);
-		exchange.getResponseHeaders().set("Content-Type", "text/plain; charset=utf-8");
-		exchange.sendResponseHeaders(200, bytes.length);
-		try (OutputStream os = exchange.getResponseBody()) {
-			os.write(bytes);
-		}
 	}
 }
