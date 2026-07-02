@@ -7,10 +7,9 @@ import java.util.Map;
 
 import org.eclipse.jetty.http.HttpMethod;
 
-import com.google.gson.Gson;
+import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
-import com.lauriewired.endpoints.Param;
 import com.lauriewired.mcp.McpTool;
 
 import ghidra.framework.plugintool.PluginTool;
@@ -25,6 +24,11 @@ import ghidra.program.model.listing.Program;
  * Expects query parameters: name (required), category (optional).
  */
 public final class GetEnum extends Handler {
+
+	public record EnumValue(String name, long value, String comment) {}
+	public record EnumInformation(String name, String category, int size, int count, 
+								  boolean isSigned, String description, List<EnumValue> values) {}
+
 	/**
 	 * Constructor for the GetEnum handler.
 	 *
@@ -45,30 +49,20 @@ public final class GetEnum extends Handler {
 	 */
 	@HttpRoute(method = HttpMethod.GET, path = "/get_enum")
     @McpTool(name = "get_enum", description = "Get an enum's definition from a program")
-    public String getEnum(@Param(name = "program", nullable = true, description = "Program name to query.") String programName, @Param(name = "name", description = "The name of the enum.") String enumName, @Param(name = "category", nullable = true, description = "The category path for the enum (defaults to root).") String category) {
+    public EnumInformation getEnum(@Param(name = "program", nullable = true, description = "Program name to query.") String programName, @Param(name = "name", description = "The name of the enum.") String enumName, @Param(name = "category", nullable = true, description = "The category path for the enum (defaults to root).") String category) {
 		Program program = getProgramByName(programName);
 		if (program == null)
-			return "No program loaded";
+			throw new IllegalArgumentException("No active program found with the specified name.");
 
 		DataTypeManager dtm = program.getDataTypeManager();
 		CategoryPath path = new CategoryPath(category == null ? "/" : category);
 		DataType dt = dtm.getDataType(path, enumName);
 
-		if (dt == null || !(dt instanceof Enum)) {
-			return "Error: Enum " + enumName + " not found in category " + path;
-		}
+		if (dt == null || !(dt instanceof Enum))
+			throw new IllegalArgumentException("Error: Enum " + enumName + " not found in category " + path);
 
 		Enum enumDt = (Enum) dt;
-
-		Map<String, Object> enumRepr = new HashMap<>();
-		enumRepr.put("name", enumDt.getName());
-		enumRepr.put("category", enumDt.getCategoryPath().getPath());
-		enumRepr.put("size", enumDt.getLength());
-		enumRepr.put("count", enumDt.getCount());
-		enumRepr.put("isSigned", enumDt.isSigned());
-		enumRepr.put("description", enumDt.getDescription());
-
-		List<Map<String, Object>> valuesList = new ArrayList<>();
+		List<EnumValue> valuesList = new ArrayList<>();
 		String[] names = enumDt.getNames();
 		long[] values = enumDt.getValues();
 		
@@ -82,17 +76,13 @@ public final class GetEnum extends Handler {
 		for (String name : names) {
 			Long value = nameToValue.get(name);
 			if (value != null) {
-				Map<String, Object> valueMap = new HashMap<>();
-				valueMap.put("name", name);
-				valueMap.put("value", value);
 				String comment = enumDt.getComment(name);
-				valueMap.put("comment", comment != null ? comment : "");
-				valuesList.add(valueMap);
+				EnumValue enumValue = new EnumValue(name, value, comment != null ? comment : "");
+				valuesList.add(enumValue);
 			}
 		}
-		enumRepr.put("values", valuesList);
 
-		Gson gson = new Gson();
-		return gson.toJson(enumRepr);
+		return new EnumInformation(enumDt.getName(), enumDt.getCategoryPath().getPath(), enumDt.getLength(), 
+								   enumDt.getCount(), enumDt.isSigned(), enumDt.getDescription(), valuesList);
 	}
 }

@@ -4,15 +4,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.jetty.http.HttpMethod;
 
-import com.google.gson.Gson;
+import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
-import com.lauriewired.endpoints.Param;
 import com.lauriewired.mcp.McpTool;
 
 import ghidra.framework.plugintool.PluginTool;
@@ -25,7 +23,10 @@ import ghidra.util.task.TaskMonitor;
  * Handler for GET requests to retrieve the callees of a function at a specific address.
  * Returns JSON array of objects: [{"name": string, "address": string|null, "external": boolean}]
  */
+
 public class GetCallee extends Handler {
+    public record CalleeInformation(String name, String address, boolean external) {}
+
     public GetCallee(PluginTool tool) {
         super(tool);
     }
@@ -35,22 +36,23 @@ public class GetCallee extends Handler {
      */
     @HttpRoute(method = HttpMethod.GET, path = "/get_callee")
     @McpTool(name = "get_callee", description = "Get the functions called by the function at the specified address.")
-    public String getCallee(@Param(name = "program", nullable=true, description = "The program name in which to resolve the address.") String programName, @Param(name = "address", description = "The address within the function.") String addressStr) 
+    public List<CalleeInformation> getCallee(@Param(name = "program", nullable=true, description = "The program name in which to resolve the address.") String programName, @Param(name = "address", description = "The address within the function.") String addressStr) 
     {
+        List<CalleeInformation> out = new ArrayList<>();
         if (addressStr == null) {
-            return "[]"; // Missing address parameter
+            return out; // Missing address parameter
         }
 
         try {
             Program currentProgram = getProgramByName(programName);
             if (currentProgram == null) {
-                return "[]"; // No active program
+                return out; // No active program
             }
 
             Address address = currentProgram.getAddressFactory().getAddress(addressStr);
             Function fn = currentProgram.getFunctionManager().getFunctionContaining(address);
             if (fn == null) {
-                return "[]"; // No function at the specified address
+                return out; // No function at the specified address
             }
 
             Set<Function> calleeSet = fn.getCalledFunctions(TaskMonitor.DUMMY);
@@ -64,8 +66,7 @@ public class GetCallee extends Handler {
             List<Function> callees = new ArrayList<>(calleeSet);
             // Sort for stable output
             Collections.sort(callees, Comparator.comparing(f -> f.getName(true), String.CASE_INSENSITIVE_ORDER));
-
-            List<Map<String, Object>> out = new ArrayList<>();
+          
             for (Function callee : callees) {
                 String name = callee.getName(true);
                 Address ep = callee.getEntryPoint();
@@ -83,16 +84,13 @@ public class GetCallee extends Handler {
                 if (name != null && name.contains("FUN_")) {
                     external = false;
                 }
-                Map<String, Object> obj = new java.util.HashMap<>();
-                obj.put("name", name);
-                obj.put("address", (addrOut == null || external) ? null : addrOut);
-                obj.put("external", external);
+                CalleeInformation obj = new CalleeInformation(name, (addrOut == null || external) ? null : addrOut, external);
                 out.add(obj);
             }
-            Gson gson = new Gson();
-            return gson.toJson(out);
+            
+            return out;
         } catch (Exception e) {
-            return "[]"; // On error, return empty list for robustness
+            return new ArrayList<>(); // On error, return empty list for robustness
         }
     }
 }

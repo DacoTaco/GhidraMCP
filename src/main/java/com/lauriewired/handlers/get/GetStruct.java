@@ -1,16 +1,13 @@
 package com.lauriewired.handlers.get;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.eclipse.jetty.http.HttpMethod;
 
-import com.google.gson.Gson;
+import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
-import com.lauriewired.endpoints.Param;
 import com.lauriewired.mcp.McpTool;
 
 import ghidra.framework.plugintool.PluginTool;
@@ -26,6 +23,10 @@ import ghidra.program.model.listing.Program;
  * Expects query parameters: name (required), category (optional).
  */
 public final class GetStruct extends Handler {
+	public record StructMember(String name, String type, int offset, int size, String comment) {}
+	public record StructInformation(String name, String category, int size, 
+									boolean isNotYetDefined, List<StructMember> members) {}
+
 	/**
 	 * Constructor for the GetStruct handler.
 	 *
@@ -46,40 +47,28 @@ public final class GetStruct extends Handler {
 	 */
 	@HttpRoute(method = HttpMethod.GET, path = "/get_struct")
     @McpTool(name = "get_struct", description = "Get a struct's definition by name and optional category")
-	public String getStruct(@Param(name = "name", description = "The name of the structure.") String structName, @Param(name = "category", nullable=true, description = "The category path for the structure. Defaults to root.") String category, @Param(name = "program", nullable=true) String programName) {
+	public StructInformation getStruct(@Param(name = "name", description = "The name of the structure.") String structName, @Param(name = "category", nullable=true, description = "The category path for the structure. Defaults to root.") String category, @Param(name = "program", nullable=true) String programName) {
 		Program program = getProgramByName(programName);
 		if (program == null)
-			return "No program loaded";
+			throw new IllegalArgumentException("No active program found");
 
 		DataTypeManager dtm = program.getDataTypeManager();
 		CategoryPath path = new CategoryPath(category == null ? "/" : category);
 		DataType dt = dtm.getDataType(path, structName);
 
-		if (dt == null || !(dt instanceof Structure)) {
-			return "Error: Struct " + structName + " not found in category " + path;
-		}
+		if (dt == null || !(dt instanceof Structure))
+			throw new IllegalArgumentException("Error: Struct " + structName + " not found in category " + path);
 
 		Structure struct = (Structure) dt;
 
-		Map<String, Object> structRepr = new HashMap<>();
-		structRepr.put("name", struct.getName());
-		structRepr.put("category", struct.getCategoryPath().getPath());
-		structRepr.put("size", struct.getLength());
-		structRepr.put("isNotYetDefined", struct.isNotYetDefined());
 
-		List<Map<String, Object>> membersList = new ArrayList<>();
+		List<StructMember> membersList = new ArrayList<>();
 		for (DataTypeComponent component : struct.getDefinedComponents()) {
-			Map<String, Object> memberMap = new HashMap<>();
-			memberMap.put("name", component.getFieldName());
-			memberMap.put("type", component.getDataType().getName());
-			memberMap.put("offset", component.getOffset());
-			memberMap.put("size", component.getLength());
-			memberMap.put("comment", component.getComment());
-			membersList.add(memberMap);
+			membersList.add(new StructMember(component.getFieldName(), component.getDataType().getName(), 
+											 component.getOffset(), component.getLength(), component.getComment()));
 		}
-		structRepr.put("members", membersList);
 
-		Gson gson = new Gson();
-		return gson.toJson(structRepr);
+		return new StructInformation(struct.getName(), struct.getCategoryPath().getPath(), 
+									 struct.getLength(), struct.isNotYetDefined(), membersList);
 	}
 }
