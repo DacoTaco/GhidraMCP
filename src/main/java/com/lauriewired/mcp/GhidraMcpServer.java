@@ -2,7 +2,7 @@ package com.lauriewired.mcp;
 
 import java.util.List;
 
-import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.ee10.servlet.ServletHolder;
 
 import com.lauriewired.endpoints.ServerEndpoint;
 

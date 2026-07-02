@@ -3,8 +3,8 @@ package com.lauriewired.http;
 import java.io.IOException;
 import java.util.List;
 
+import org.eclipse.jetty.ee10.servlet.ServletHolder;
 import org.eclipse.jetty.http.HttpMethod;
-import org.eclipse.jetty.servlet.ServletHolder;
 
 import com.google.gson.Gson;
 import com.lauriewired.endpoints.ArgumentBinder;

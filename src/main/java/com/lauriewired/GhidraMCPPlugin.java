@@ -3,9 +3,9 @@ package com.lauriewired;
 import java.io.IOException;
 import java.util.List;
 
+import org.eclipse.jetty.ee10.servlet.ServletContextHandler;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
-import org.eclipse.jetty.servlet.ServletContextHandler;
 
 import com.lauriewired.endpoints.ArgumentBinder;
 import com.lauriewired.endpoints.ServerEndpoint;
