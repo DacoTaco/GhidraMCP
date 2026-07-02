@@ -105,21 +105,13 @@ If 5ire supports HTTP MCP directly, use:
 - `http://127.0.0.1:8080/mcp`
 
 # Building from Source
-1. Copy the following files from your Ghidra directory to this project's `lib/` directory:
-- `Ghidra/Features/Base/lib/Base.jar`
-- `Ghidra/Features/Decompiler/lib/Decompiler.jar`
-- `Ghidra/Framework/Docking/lib/Docking.jar`
-- `Ghidra/Framework/Generic/lib/Generic.jar`
-- `Ghidra/Framework/Project/lib/Project.jar`
-- `Ghidra/Framework/SoftwareModeling/lib/SoftwareModeling.jar`
-- `Ghidra/Framework/Utility/lib/Utility.jar`
-- `Ghidra/Framework/Gui/lib/Gui.jar`
-2. Build with Maven by running:
 
-`mvn clean package assembly:single`
+To build from source, you need to set the `GHIDRA_INSTALL_DIR` environment variable to point to your Ghidra installation directory. This can be done as follows:
+- Windows: Running set GHIDRA_INSTALL_DIR=`<Absolute path to Ghidra without quotations>`
+- macos/Linux: Running export GHIDRA_INSTALL_DIR=`<Absolute path to Ghidra>`
+
+Build with Gradle by simply running:
+
+`gradle`
 
 The generated zip file includes the built Ghidra plugin and its resources. These files are required for Ghidra to recognize the new extension.
-
-- lib/GhidraMCP.jar
-- extensions.properties
-- Module.manifest
