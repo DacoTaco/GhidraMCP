@@ -40,7 +40,7 @@ jobs:
     - name: Assemble release directory
       run: |
         mkdir -p release
-        zipfile=$(find . -type f -name '*.zip' | head -n1)
+        zipfile=$(find dist -type f -name '*.zip' | head -n1)
         if [ -z "$zipfile" ]; then
           echo "No zip artifact found"
           exit 1
