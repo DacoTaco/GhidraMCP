@@ -21,6 +21,8 @@ jobs:
         java-version: '21'
         distribution: 'temurin'
         cache: gradle
+    - name: Set up Gradle
+      uses: gradle/actions/setup-gradle@v4
 
     - name: Download Ghidra
       run: |
@@ -29,12 +31,6 @@ jobs:
 
     - name: Set GHIDRA_INSTALL_DIR
       run: echo "GHIDRA_INSTALL_DIR=$PWD/ghidra_${{ env.GHIDRA_VERSION }}_PUBLIC/Ghidra" >> $GITHUB_ENV
-
-    - name: Install Gradle (via sdkman)
-      run: |
-        curl -s "https://get.sdkman.io" | bash
-        source "$HOME/.sdkman/bin/sdkman-init.sh"
-        sdk install gradle 8.6.2
 
     - name: Build with Gradle
       run: |
