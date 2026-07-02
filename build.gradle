@@ -102,3 +102,7 @@ tasks.register('generatePythonClient', JavaExec) {
 tasks.named("buildExtension") {
     finalizedBy("generatePythonClient")
 }
+
+tasks.named("build") {
+    dependsOn "buildExtension"
+}
