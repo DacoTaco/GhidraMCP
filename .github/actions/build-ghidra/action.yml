@@ -1,0 +1,89 @@
+name: Build Ghidra Extension
+description: Builds the extension against a specified Ghidra version
+
+inputs:
+  ghidra-version:
+    description: Ghidra version (e.g. 12.1)
+    required: true
+
+  ghidra-date:
+    description: Ghidra release date (e.g. 20260617)
+    required: true
+
+  ghidra-download-dir:
+    description: Directory containing the Ghidra installation
+    required: true
+
+  output-dir:
+    description: Directory where the assembled release artifacts will be placed
+    required: true
+
+outputs:
+  artifact-dir:
+    description: Directory containing the assembled release artifacts
+    value: ${{ inputs.output-dir }}
+
+runs:
+  using: composite
+
+  steps:
+    - name: Set up JDK 21
+      uses: actions/setup-java@v5
+      with:
+        java-version: "21"
+        distribution: temurin
+        cache: gradle
+
+    - name: Set up Gradle
+      uses: gradle/actions/setup-gradle@v5
+
+    - name: Clean previous build artifacts
+      shell: bash
+      run: |
+        rm -rf \
+          build \
+          dist \
+          "${{ inputs.ghidra-download-dir }}"
+
+        mkdir -p "${{ inputs.ghidra-download-dir }}"
+
+    - name: Download Ghidra
+      shell: bash
+      run: |
+        wget --no-verbose \
+          -O "${{ inputs.ghidra-download-dir }}/ghidra.zip" \
+          "https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_${{ inputs.ghidra-version }}_build/ghidra_${{ inputs.ghidra-version }}_PUBLIC_${{ inputs.ghidra-date }}.zip"
+
+        7z x -bd \
+          "${{ inputs.ghidra-download-dir }}/ghidra.zip" \
+          -o"${{ inputs.ghidra-download-dir }}"
+
+    - name: Set GHIDRA_INSTALL_DIR
+      shell: bash
+      run: |
+        echo "GHIDRA_INSTALL_DIR=${{ inputs.ghidra-download-dir }}/ghidra_${{ inputs.ghidra-version }}_PUBLIC" >> "$GITHUB_ENV"
+
+    - name: Build with Gradle
+      shell: bash
+      run: |
+        echo "Using GHIDRA_INSTALL_DIR=$GHIDRA_INSTALL_DIR"
+        gradle -PGHIDRA_INSTALL_DIR="$GHIDRA_INSTALL_DIR" clean build
+
+    - name: Assemble artifacts
+      shell: bash
+      run: |
+        mkdir -p "${{ inputs.output-dir }}"
+
+        zipfile=$(find dist -type f -name '*.zip' | head -n1)
+
+        if [ -z "$zipfile" ]; then
+          echo "No zip artifact found."
+          exit 1
+        fi
+
+        cp "$zipfile" "${{ inputs.output-dir }}/GhidraMCP-${{ inputs.ghidra-version }}.zip"
+
+        cp bridge_mcp_ghidra.py "${{ inputs.output-dir }}/"
+
+        echo "Contents of ${{ inputs.output-dir }}:"
+        ls -lah "${{ inputs.output-dir }}"
