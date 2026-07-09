@@ -5,9 +5,9 @@ import java.util.List;
 
 import org.eclipse.jetty.http.HttpMethod;
 
+import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
-import com.lauriewired.endpoints.Param;
 import com.lauriewired.mcp.McpTool;
 import static com.lauriewired.util.ParseUtils.escapeNonAscii;
 import static com.lauriewired.util.ParseUtils.paginateList;
@@ -42,7 +42,8 @@ public final class ListDefinedData extends Handler {
 	 */
 	@HttpRoute(method = HttpMethod.GET, path = "/data")
     @McpTool(name="list_data_items", description = "List defined data labels and their values with pagination.")
-	public String listDefinedData(@Param(name = "offset", nullable = true) Integer offset, @Param(name = "limit", nullable = true) Integer limit, @Param(name = "program", nullable = true) String programName) {
+	public String listDefinedData(@Param(name = "offset", nullable = true) Integer offset, @Param(name = "limit", nullable = true) Integer limit, 
+								  @Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable = true) String programName) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";

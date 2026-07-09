@@ -2,9 +2,9 @@ package com.lauriewired.handlers.comment;
 
 import org.eclipse.jetty.http.HttpMethod;
 
+import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
-import com.lauriewired.endpoints.Param;
 import com.lauriewired.mcp.McpTool;
 import static com.lauriewired.util.GhidraUtils.setCommentAtAddress;
 
@@ -30,7 +30,7 @@ public final class SetDecompilerComment extends Handler {
 	public String setDecompilerCommentRoute(
 		@Param(name = "address") String address,
 		@Param(name = "comment") String comment,
-		@Param(name = "program", nullable = true) String program
+		@Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable = true) String program
 	) {
 		return setDecompilerComment(program, address, comment)
 			? "Comment set successfully"

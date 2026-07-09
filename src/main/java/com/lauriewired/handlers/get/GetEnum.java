@@ -49,7 +49,9 @@ public final class GetEnum extends Handler {
 	 */
 	@HttpRoute(method = HttpMethod.GET, path = "/get_enum")
     @McpTool(name = "get_enum", description = "Get an enum's definition from a program")
-    public EnumInformation getEnum(@Param(name = "program", nullable = true, description = "Program name to query.") String programName, @Param(name = "name", description = "The name of the enum.") String enumName, @Param(name = "category", nullable = true, description = "The category path for the enum (defaults to root).") String category) {
+    public EnumInformation getEnum(@Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable = true) String programName, 
+								   @Param(name = "name", description = "The name of the enum.") String enumName, 
+								   @Param(name = "category", nullable = true, description = "The category path for the enum (defaults to root).") String category) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			throw new IllegalArgumentException("No active program found with the specified name.");

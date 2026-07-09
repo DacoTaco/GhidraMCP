@@ -5,9 +5,9 @@ import java.util.List;
 
 import org.eclipse.jetty.http.HttpMethod;
 
+import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
-import com.lauriewired.endpoints.Param;
 import com.lauriewired.mcp.McpTool;
 import static com.lauriewired.util.ParseUtils.paginateList;
 
@@ -39,8 +39,9 @@ public final class GetFunctionXrefs extends Handler {
 	 */
 	@HttpRoute(method = HttpMethod.GET, path = "/function_xrefs")
     @McpTool(name = "get_function_xrefs", description = "Get all references to the specified function by name")
-    public String getFunctionXrefs(@Param(name = "program", nullable=true) String programName, @Param(name = "name", description = "Function name to search for.") String functionName,
-            @Param(name = "offset", nullable = true, description = "Pagination offset (default: 0).") Integer offset, @Param(name = "limit", nullable = true, description = "Maximum number of references to return (default: 100).") Integer limit
+    public String getFunctionXrefs(@Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable=true) String programName, 
+								   @Param(name = "name", description = "Function name to search for.") String functionName,
+                                   @Param(name = "offset", nullable = true, description = "Pagination offset (default: 0).") Integer offset, @Param(name = "limit", nullable = true, description = "Maximum number of references to return (default: 100).") Integer limit
     ) {
 		Program program = getProgramByName(programName);
 		if (program == null)

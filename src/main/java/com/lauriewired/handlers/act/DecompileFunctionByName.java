@@ -2,10 +2,10 @@ package com.lauriewired.handlers.act;
 
 import org.eclipse.jetty.http.HttpMethod;
 
-import com.lauriewired.handlers.Handler;
-import com.lauriewired.http.HttpRoute;
 import com.lauriewired.endpoints.Param;
 import com.lauriewired.endpoints.ParamLocation;
+import com.lauriewired.handlers.Handler;
+import com.lauriewired.http.HttpRoute;
 import com.lauriewired.mcp.McpTool;
 
 import ghidra.app.decompiler.DecompInterface;
@@ -40,7 +40,7 @@ public final class DecompileFunctionByName extends Handler {
 	 */
 	@HttpRoute(method=HttpMethod.POST, path="/decompile")
 	@McpTool(name = "decompile_function", description = "Decompile a specific function by name and return the decompiled C code.")
-    public String generateResponse(@Param(name="name", location=ParamLocation.Body) String name, @Param(name="program", nullable=true) String programName) {
+    public String generateResponse(@Param(name="name", location=ParamLocation.Body) String name, @Param(name="program", description="optional program name to work with. normally kept empty to select active program.", nullable=true) String programName) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";

@@ -8,9 +8,9 @@ import javax.swing.SwingUtilities;
 
 import org.eclipse.jetty.http.HttpMethod;
 
+import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
-import com.lauriewired.endpoints.Param;
 import com.lauriewired.mcp.McpTool;
 import static com.lauriewired.util.GhidraUtils.resolveDataType;
 
@@ -48,7 +48,8 @@ public final class SetLocalVariableType extends Handler {
 	@HttpRoute(method=HttpMethod.POST, path="/set_local_variable_type")
 	@McpTool(name="set_local_variable_type", description="Set a local variable's type.")
 	public String handleRequest(@Param(name="function_address") String functionAddress, @Param(name="variable_name") String variableName, 
-								@Param(name="new_type") String newType, @Param(name="program", nullable=true) String programName) {
+								@Param(name="new_type") String newType, 
+								@Param(name="program", description="optional program name to work with. normally kept empty to select active program.", nullable=true) String programName) {
 		// Capture detailed information about setting the type
 		StringBuilder responseMsg = new StringBuilder();
 		responseMsg.append("Setting variable type: ").append(variableName)

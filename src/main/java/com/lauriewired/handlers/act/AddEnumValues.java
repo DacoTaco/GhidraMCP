@@ -7,9 +7,9 @@ import javax.swing.SwingUtilities;
 
 import org.eclipse.jetty.http.HttpMethod;
 
+import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
-import com.lauriewired.endpoints.Param;
 import com.lauriewired.mcp.McpTool;
 import com.lauriewired.util.EnumUtils.EnumValue;
 
@@ -50,8 +50,9 @@ public final class AddEnumValues extends Handler {
 	 */
 	@HttpRoute(method = HttpMethod.POST, path = "/add_enum_values")
 	@McpTool(name = "add_enum_values", description = "Add values to an existing enum.")
-	public String addEnumValues(@Param(name = "program", nullable = true) String programName, @Param(name = "enum_name", description = "The name of the enum to modify.") String enumName, 
-								 @Param(name = "category", nullable = true, description = "The category path for the enum. Defaults to root.") String category, @Param(name = "values", description = "List of value dicts with 'name', 'value', and optionally 'comment'. Example: [{'name': 'VALUE1', 'value': 0}]") EnumValue[] values) {
+	public String addEnumValues(@Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable = true) String programName, 
+								@Param(name = "enum_name", description = "The name of the enum to modify.") String enumName, 
+								@Param(name = "category", nullable = true, description = "The category path for the enum. Defaults to root.") String category, @Param(name = "values", description = "List of value dicts with 'name', 'value', and optionally 'comment'. Example: [{'name': 'VALUE1', 'value': 0}]") EnumValue[] values) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";

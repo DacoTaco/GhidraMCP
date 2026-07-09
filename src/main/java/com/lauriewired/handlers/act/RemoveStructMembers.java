@@ -7,9 +7,9 @@ import javax.swing.SwingUtilities;
 
 import org.eclipse.jetty.http.HttpMethod;
 
+import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
-import com.lauriewired.endpoints.Param;
 import com.lauriewired.mcp.McpTool;
 
 import ghidra.framework.plugintool.PluginTool;
@@ -48,7 +48,8 @@ public final class RemoveStructMembers extends Handler {
 	@HttpRoute(method=HttpMethod.POST, path="/remove_struct_members")
 	@McpTool(name="remove_struct_members", description="Remove members from an existing struct.")
 	public String removeStructMembers(@Param(name="struct_name", description="The name of the struct to modify.") String structName, @Param(name="category", nullable=true, description="The category path for the struct (optional, defaults to root).") String category, 
-									   @Param(name="members", description="List of member names to remove from the struct. Example: ['old_field', 'unused_member']") String[] members, @Param(name="program", nullable=true) String programName) {
+									   @Param(name="members", description="List of member names to remove from the struct. Example: ['old_field', 'unused_member']") String[] members, 
+									   @Param(name="program", description="optional program name to work with. normally kept empty to select active program.", nullable=true) String programName) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";

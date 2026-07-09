@@ -9,9 +9,9 @@ import javax.swing.SwingUtilities;
 
 import org.eclipse.jetty.http.HttpMethod;
 
+import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
-import com.lauriewired.endpoints.Param;
 import com.lauriewired.mcp.McpTool;
 import static com.lauriewired.util.GhidraUtils.resolveDataType;
 import com.lauriewired.util.StructUtils.StructMember;
@@ -57,7 +57,8 @@ public final class CreateClass extends Handler {
 	 */
 	@HttpRoute(method=HttpMethod.POST, path = "/create_class")
 	@McpTool(name = "create_class", description = "Create a new C++ class in Ghidra.")
-	public String createClassInGhidra(@Param(name = "program", nullable = true) String programName, @Param(name = "name") String name,
+	public String createClassInGhidra(@Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable = true) String programName, 
+									  @Param(name = "name") String name,
 									  @Param(name = "parent_namespace", nullable = true) String parentNamespace, @Param(name = "members", nullable = true) StructMember[] members){
 		Program program = getProgramByName(programName);
 		if (program == null)

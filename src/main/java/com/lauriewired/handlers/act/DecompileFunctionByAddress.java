@@ -2,9 +2,9 @@ package com.lauriewired.handlers.act;
 
 import org.eclipse.jetty.http.HttpMethod;
 
+import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
-import com.lauriewired.endpoints.Param;
 import com.lauriewired.mcp.McpTool;
 
 import ghidra.app.decompiler.DecompInterface;
@@ -39,7 +39,7 @@ public final class DecompileFunctionByAddress extends Handler {
 	 */
 	@HttpRoute(method=HttpMethod.GET, path="/decompile_function")
 	@McpTool(name = "decompile_function_by_address", description = "Decompile a function at the given address.")
-	public String decompileFunctionByAddress(@Param(name="address") String addressStr, @Param(name="program", nullable=true) String programName) {
+	public String decompileFunctionByAddress(@Param(name="address") String addressStr, @Param(name="program", description="optional program name to work with. normally kept empty to select active program.", nullable=true) String programName) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";

@@ -7,9 +7,9 @@ import javax.swing.SwingUtilities;
 
 import org.eclipse.jetty.http.HttpMethod;
 
+import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
-import com.lauriewired.endpoints.Param;
 import com.lauriewired.mcp.McpTool;
 import static com.lauriewired.util.GhidraUtils.resolveDataType;
 import com.lauriewired.util.StructUtils.StructMember;
@@ -51,7 +51,7 @@ public final class CreateStruct extends Handler {
 	@McpTool(name = "create_struct", description = "Create a new structure.")
 	public String createStruct(@Param(name = "name", description = "The name of the new structure.") String name, @Param(name = "category", nullable = true, description = "The category path for the structure (e.g., /my_structs). Defaults to root.") String category,
 							   @Param(name = "size", nullable = true, description = "The initial size of the structure.") Integer structSize, @Param(name = "members", nullable = true, description = "List of member dicts with 'name', 'type', and optionally 'offset' and 'comment'. Pointers use asterisk, e.g. void*, int*.") StructMember[] members,
-							   @Param(name = "program", nullable = true) String programName) {
+							   @Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable = true) String programName) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";

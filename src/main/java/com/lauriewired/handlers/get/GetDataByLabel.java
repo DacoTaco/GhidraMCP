@@ -2,9 +2,9 @@ package com.lauriewired.handlers.get;
 
 import org.eclipse.jetty.http.HttpMethod;
 
+import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
-import com.lauriewired.endpoints.Param;
 import com.lauriewired.mcp.McpTool;
 import static com.lauriewired.util.ParseUtils.escapeString;
 
@@ -42,7 +42,8 @@ public final class GetDataByLabel extends Handler {
 	 */
 	@HttpRoute(method=HttpMethod.GET, path="/get_data_by_label")
     @McpTool(name="get_data_by_label", description = "Get information about a data label in the current program")
-    public String handle(@Param(name="program", nullable=true, description="Program name to query.") String programName, @Param(name="label", description="Exact symbol / label name.") String label){
+    public String handle(@Param(name="program", description="optional program name to work with. normally kept empty to select active program.", nullable=true) String programName, 
+						 @Param(name="label", description="Exact symbol / label name.") String label){
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";

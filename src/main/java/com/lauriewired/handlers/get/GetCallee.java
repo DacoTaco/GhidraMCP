@@ -36,7 +36,8 @@ public class GetCallee extends Handler {
      */
     @HttpRoute(method = HttpMethod.GET, path = "/get_callee")
     @McpTool(name = "get_callee", description = "Get the functions called by the function at the specified address.")
-    public List<CalleeInformation> getCallee(@Param(name = "program", nullable=true, description = "The program name in which to resolve the address.") String programName, @Param(name = "address", description = "The address within the function.") String addressStr) 
+    public List<CalleeInformation> getCallee(@Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable=true) String programName, 
+                                             @Param(name = "address", description = "The address within the function.") String addressStr) 
     {
         List<CalleeInformation> out = new ArrayList<>();
         if (addressStr == null) {

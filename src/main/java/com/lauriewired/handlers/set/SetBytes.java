@@ -7,9 +7,9 @@ import javax.swing.SwingUtilities;
 
 import org.eclipse.jetty.http.HttpMethod;
 
+import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
-import com.lauriewired.endpoints.Param;
 import com.lauriewired.mcp.McpTool;
 
 import ghidra.framework.plugintool.PluginTool;
@@ -45,7 +45,8 @@ public final class SetBytes extends Handler {
      */
     @HttpRoute(method=HttpMethod.POST, path="/set_bytes")
     @McpTool(name="set_bytes", description="Writes a sequence of bytes to the specified address in the program's memory.")
-    public String writeBytesToAddress(@Param(name="address", description="Destination address (e.g. 0x140001000).") String addressStr, @Param(name="bytes", description="Space-separated bytes in hexadecimal format (e.g. 90 90 90 90).") String bytesStr, @Param(name="program", nullable=true) String programName) {
+    public String writeBytesToAddress(@Param(name="address", description="Destination address (e.g. 0x140001000).") String addressStr, @Param(name="bytes", description="Space-separated bytes in hexadecimal format (e.g. 90 90 90 90).") String bytesStr, 
+                                      @Param(name="program", description="optional program name to work with. normally kept empty to select active program.", nullable=true) String programName) {
         Program program = getProgramByName(programName);
         if (program == null)
             return "No active program";

@@ -7,9 +7,9 @@ import javax.swing.SwingUtilities;
 
 import org.eclipse.jetty.http.HttpMethod;
 
+import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
-import com.lauriewired.endpoints.Param;
 import com.lauriewired.mcp.McpTool;
 
 import ghidra.framework.plugintool.PluginTool;
@@ -53,7 +53,8 @@ public final class RemoveClassMembers extends Handler {
 	@HttpRoute(method=HttpMethod.POST, path="/remove_class_members")
 	@McpTool(name = "remove_class_members", description = "Remove members from an existing C++ class.")
     public String removeClassMembers(@Param(name="class_name", description="The name of the class to modify.") String className, @Param(name="parent_namespace", nullable=true, description="The parent namespace where the class is located (optional).") String parentNamespace, 
-									 @Param(name="members", description="List of member names to remove from the class. Example: ['old_member', 'unused_field']") String[] members, @Param(name="program", nullable=true) String programName) {
+									 @Param(name="members", description="List of member names to remove from the class. Example: ['old_member', 'unused_field']") String[] members, 
+									 @Param(name="program", description="optional program name to work with. normally kept empty to select active program.", nullable=true) String programName) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";

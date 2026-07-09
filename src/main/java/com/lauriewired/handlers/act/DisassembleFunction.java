@@ -2,9 +2,9 @@ package com.lauriewired.handlers.act;
 
 import org.eclipse.jetty.http.HttpMethod;
 
+import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
-import com.lauriewired.endpoints.Param;
 import com.lauriewired.mcp.McpTool;
 
 import ghidra.framework.plugintool.PluginTool;
@@ -41,7 +41,7 @@ public final class DisassembleFunction extends Handler{
 	 */
 	@HttpRoute(method=HttpMethod.GET, path="/disassemble_function")
 	@McpTool(name = "disassemble_function", description = "Get assembly code (address: instruction; comment) for a function.")
-    public String disassembleFunction(@Param(name="address") String addressStr, @Param(name="program", nullable=true) String programName) {
+    public String disassembleFunction(@Param(name="address") String addressStr, @Param(name="program", description="optional program name to work with. normally kept empty to select active program.", nullable=true) String programName) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";

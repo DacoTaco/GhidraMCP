@@ -7,9 +7,9 @@ import javax.swing.SwingUtilities;
 
 import org.eclipse.jetty.http.HttpMethod;
 
+import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
-import com.lauriewired.endpoints.Param;
 import com.lauriewired.mcp.McpTool;
 
 import ghidra.framework.plugintool.PluginTool;
@@ -47,7 +47,8 @@ public final class RemoveEnumValues extends Handler {
 	@HttpRoute(method=HttpMethod.POST, path="/remove_enum_values")
 	@McpTool(name = "remove_enum_values", description = "Remove values from an existing enum.")
     public String removeEnumValues(@Param(name="enum_name", description="The name of the enum to modify.") String enumName, @Param(name="category", nullable=true, description="The category path for the enum (optional, defaults to root).") String category, 
-								   @Param(name="values", description="List of value names to remove from the enum. Example: ['OLD_VALUE', 'DEPRECATED_OPTION']") String[] values, @Param(name="program", nullable=true) String programName) {
+								   @Param(name="values", description="List of value names to remove from the enum. Example: ['OLD_VALUE', 'DEPRECATED_OPTION']") String[] values, 
+								   @Param(name="program", description="optional program name to work with. normally kept empty to select active program.", nullable=true) String programName) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";

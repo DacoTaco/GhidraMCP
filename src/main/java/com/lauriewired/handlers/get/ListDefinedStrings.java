@@ -5,9 +5,9 @@ import java.util.List;
 
 import org.eclipse.jetty.http.HttpMethod;
 
+import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
-import com.lauriewired.endpoints.Param;
 import com.lauriewired.mcp.McpTool;
 import static com.lauriewired.util.ParseUtils.escapeString;
 import static com.lauriewired.util.ParseUtils.paginateList;
@@ -42,8 +42,10 @@ public final class ListDefinedStrings extends Handler {
 	 */
 	@HttpRoute(method = HttpMethod.GET, path = "/strings")
     @McpTool(name = "list_strings", description = "List all defined strings in the program with their addresses.")
-	public String listDefinedStrings(@Param(name = "offset", nullable = true, description = "Pagination offset (default: 0).") Integer offset, @Param(name = "limit", nullable = true, description = "Maximum number of strings to return (default: 2000).") Integer limit, 
-									 @Param(name = "filter", nullable = true, description = "Optional filter to match within string content.") String filter, @Param(name = "program", nullable = true) String programName) {
+	public String listDefinedStrings(@Param(name = "offset", nullable = true, description = "Pagination offset (default: 0).") Integer offset, 
+									 @Param(name = "limit", nullable = true, description = "Maximum number of strings to return (default: 2000).") Integer limit, 
+									 @Param(name = "filter", nullable = true, description = "Optional filter to match within string content.") String filter, 
+									 @Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable = true) String programName) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";

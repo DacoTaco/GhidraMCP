@@ -7,9 +7,9 @@ import javax.swing.SwingUtilities;
 
 import org.eclipse.jetty.http.HttpMethod;
 
+import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
-import com.lauriewired.endpoints.Param;
 import com.lauriewired.mcp.McpTool;
 
 import ghidra.framework.plugintool.PluginTool;
@@ -85,7 +85,8 @@ public final class SetFunctionPrototype extends Handler {
 	 */
 	@HttpRoute(method=HttpMethod.POST, path="/set_function_prototype")
 	@McpTool(name="set_function_prototype", description="Set a function's prototype.")
-	public PrototypeResult setFunctionPrototype(@Param(name="function_address") String functionAddrStr, @Param(name="prototype") String prototype, @Param(name="program", nullable=true) String programName) {
+	public PrototypeResult setFunctionPrototype(@Param(name="function_address") String functionAddrStr, @Param(name="prototype") String prototype, 
+												@Param(name="program", description="optional program name to work with. normally kept empty to select active program.", nullable=true) String programName) {
 		// Input validation
 		Program program = getProgramByName(programName);
 		if (program == null)

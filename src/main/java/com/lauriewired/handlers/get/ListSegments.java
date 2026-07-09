@@ -5,9 +5,9 @@ import java.util.List;
 
 import org.eclipse.jetty.http.HttpMethod;
 
+import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
-import com.lauriewired.endpoints.Param;
 import com.lauriewired.mcp.McpTool;
 import static com.lauriewired.util.ParseUtils.paginateList;
 
@@ -39,7 +39,8 @@ public final class ListSegments extends Handler {
 	 */
 	@HttpRoute(method = HttpMethod.GET, path = "/segments")
     @McpTool(name = "list_segments", description = "List all memory segments in the program with pagination.")
-	public String listSegments(@Param(name = "program", nullable = true) String programName, @Param(name = "offset", nullable = true) Integer offset, @Param(name = "limit", nullable = true) Integer limit) {
+	public String listSegments(@Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable = true) String programName, 
+							   @Param(name = "offset", nullable = true) Integer offset, @Param(name = "limit", nullable = true) Integer limit) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";

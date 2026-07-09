@@ -5,9 +5,9 @@ import java.util.List;
 
 import org.eclipse.jetty.http.HttpMethod;
 
+import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
-import com.lauriewired.endpoints.Param;
 import com.lauriewired.mcp.McpTool;
 import static com.lauriewired.util.ParseUtils.decodeHex;
 import static com.lauriewired.util.ParseUtils.paginateList;
@@ -43,8 +43,10 @@ public final class SearchBytes extends Handler {
 	 */
 	@HttpRoute(method = HttpMethod.GET, path = "/search_bytes")
     @McpTool(name = "search_bytes", description = "Search the whole program for a specific byte sequence.")
-	public String searchBytes(@Param(name = "bytes", description = "Byte sequence encoded as a hex string (e.g. DEADBEEF or DE AD BE EF).") String bytesHex, @Param(name = "program", nullable = true) String programName, 
-							  @Param(name = "offset", nullable = true, description = "Pagination offset for results (default: 0).") Integer offset, @Param(name = "limit", nullable = true, description = "Maximum number of hit addresses to return (default: 100).") Integer limit) {
+	public String searchBytes(@Param(name = "bytes", description = "Byte sequence encoded as a hex string (e.g. DEADBEEF or DE AD BE EF).") String bytesHex, 
+							  @Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable = true) String programName, 
+							  @Param(name = "offset", nullable = true, description = "Pagination offset for results (default: 0).") Integer offset, 
+							  @Param(name = "limit", nullable = true, description = "Maximum number of hit addresses to return (default: 100).") Integer limit) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";

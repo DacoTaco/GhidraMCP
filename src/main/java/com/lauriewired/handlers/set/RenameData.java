@@ -6,9 +6,9 @@ import javax.swing.SwingUtilities;
 
 import org.eclipse.jetty.http.HttpMethod;
 
+import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
-import com.lauriewired.endpoints.Param;
 import com.lauriewired.mcp.McpTool;
 
 import ghidra.framework.plugintool.PluginTool;
@@ -46,7 +46,8 @@ public final class RenameData extends Handler {
 
 	@HttpRoute(method = HttpMethod.POST, path = "/renameData")
     @McpTool(name = "rename_data", description = "Rename a data label at the specified address.")
-	public void renameDataAtAddress(@Param(name = "program", nullable = true) String programName, @Param(name = "address") String addressStr, @Param(name = "newName") String newName) {
+	public void renameDataAtAddress(@Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable = true) String programName, 
+									@Param(name = "address") String addressStr, @Param(name = "newName") String newName) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return;

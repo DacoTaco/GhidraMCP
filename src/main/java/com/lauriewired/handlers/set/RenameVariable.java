@@ -8,9 +8,9 @@ import javax.swing.SwingUtilities;
 
 import org.eclipse.jetty.http.HttpMethod;
 
+import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
-import com.lauriewired.endpoints.Param;
 import com.lauriewired.mcp.McpTool;
 
 import ghidra.app.decompiler.DecompInterface;
@@ -54,7 +54,8 @@ public final class RenameVariable extends Handler {
 	@HttpRoute(method=HttpMethod.POST, path="/renameVariable")
 	@McpTool(name="rename_variable", description="Rename a local variable within a function.")
 	public String renameVariableInFunction(@Param(name="functionName") String functionName, @Param(name="oldName") String oldVarName, 
-										   @Param(name="newName") String newVarName, @Param(name="program", nullable=true) String programName) {
+										   @Param(name="newName") String newVarName, 
+										   @Param(name="program", description="optional program name to work with. normally kept empty to select active program.", nullable=true) String programName) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";

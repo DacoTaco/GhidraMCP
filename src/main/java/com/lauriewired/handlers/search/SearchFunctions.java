@@ -6,9 +6,9 @@ import java.util.List;
 
 import org.eclipse.jetty.http.HttpMethod;
 
+import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
-import com.lauriewired.endpoints.Param;
 import com.lauriewired.mcp.McpTool;
 import static com.lauriewired.util.ParseUtils.paginateList;
 
@@ -42,7 +42,8 @@ public final class SearchFunctions extends Handler {
 	@HttpRoute(method = HttpMethod.GET, path = "/searchFunctions")
     @McpTool(name = "search_functions_by_name", description = "Search for functions whose name contains the given substring.")
 	public String searchFunctionsByName(@Param(name = "query") String searchTerm, @Param(name = "offset", nullable = true) Integer offset,
-            							 @Param(name = "limit", nullable = true) Integer limit, @Param(name = "program", nullable = true) String programName) {
+            							@Param(name = "limit", nullable = true) Integer limit, 
+										@Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable = true) String programName) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";

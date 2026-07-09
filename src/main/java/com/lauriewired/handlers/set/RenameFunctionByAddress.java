@@ -41,7 +41,8 @@ public final class RenameFunctionByAddress extends Handler {
 	 */
 	@HttpRoute(method = HttpMethod.POST, path = "/rename_function_by_address")
     @McpTool(name = "rename_function_by_address", description = "Rename a function by its address.")
-	public boolean renameFunctionByAddress(@Param(name = "program", nullable = true) String programName, @Param(name = "function_address") String functionAddress, @Param(name = "new_name") String newName) {
+	public boolean renameFunctionByAddress(@Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable = true) String programName, 
+										   @Param(name = "function_address") String functionAddress, @Param(name = "new_name") String newName) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return false;

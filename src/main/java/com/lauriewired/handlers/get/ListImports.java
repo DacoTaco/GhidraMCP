@@ -5,9 +5,9 @@ import java.util.List;
 
 import org.eclipse.jetty.http.HttpMethod;
 
+import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
-import com.lauriewired.endpoints.Param;
 import com.lauriewired.mcp.McpTool;
 import static com.lauriewired.util.ParseUtils.paginateList;
 
@@ -39,7 +39,9 @@ public final class ListImports extends Handler {
 	 */
 	@HttpRoute(method = HttpMethod.GET, path = "/imports")
     @McpTool(name = "list_imports", description = "List imported symbols in the program with pagination.")
-    public String listImports(@Param(name = "program", nullable = true) String programName, @Param(name = "offset", nullable = true) Integer offset, @Param(name = "limit", nullable = true) Integer limit) {
+    public String listImports(@Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable = true) String programName, 
+							  @Param(name = "offset", nullable = true) Integer offset, 
+							  @Param(name = "limit", nullable = true) Integer limit) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";

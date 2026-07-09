@@ -2,9 +2,9 @@ package com.lauriewired.handlers.get;
 
 import org.eclipse.jetty.http.HttpMethod;
 
+import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
-import com.lauriewired.endpoints.Param;
 import com.lauriewired.mcp.McpTool;
 
 import ghidra.framework.plugintool.PluginTool;
@@ -28,7 +28,8 @@ public final class GetFunctionByAddress extends Handler {
 	 */
 	@HttpRoute(method = HttpMethod.GET, path = "/get_function_by_address")
     @McpTool(name = "get_function_by_address", description = "Get a function by its address")
-	public String getFunctionByAddress(@Param(name = "address") String addressStr, @Param(name = "program", nullable = true) String programName) {
+	public String getFunctionByAddress(@Param(name = "address") String addressStr, 
+									   @Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable = true) String programName) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";

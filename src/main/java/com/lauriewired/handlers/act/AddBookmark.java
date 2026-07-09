@@ -6,9 +6,9 @@ import javax.swing.SwingUtilities;
 
 import org.eclipse.jetty.http.HttpMethod;
 
+import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
-import com.lauriewired.endpoints.Param;
 import com.lauriewired.mcp.McpTool;
 
 import ghidra.framework.plugintool.PluginTool;
@@ -38,7 +38,7 @@ public class AddBookmark extends Handler {
             """
     )
     @HttpRoute(method = HttpMethod.POST, path = "/add_bookmark")
-	public String addBookmark(@Param(name="program", nullable=true) String programName, @Param(name="address", description="The address to create the bookmark at.") String addressStr, 
+	public String addBookmark(@Param(name="program", description="optional program name to work with. normally kept empty to select active program.", nullable=true) String programName, @Param(name="address", description="The address to create the bookmark at.") String addressStr, 
                                @Param(name="category", description="The category of the bookmark.") String category, @Param(name="comment", description="The comment for the bookmark.") String comment,
                                @Param(name="type", nullable=true, description="Bookmark type (default: Note). Available types: Note, Info, Warning, Error, Analysis.") String type) {
 		final String resolvedType = (type == null) ? "Note" : type;

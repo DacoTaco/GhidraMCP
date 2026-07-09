@@ -2,9 +2,9 @@ package com.lauriewired.handlers.get;
 
 import org.eclipse.jetty.http.HttpMethod;
 
+import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
-import com.lauriewired.endpoints.Param;
 import com.lauriewired.mcp.McpTool;
 import com.lauriewired.util.GhidraUtils;
 
@@ -36,7 +36,7 @@ public final class GetCurrentFunction extends Handler {
 	 */
 	@HttpRoute(method = HttpMethod.GET, path = "/get_current_function")
     @McpTool(name = "get_current_function", description = "Get the function currently selected by the user")
-	public String getCurrentFunction(@Param(name="program", nullable=true) String programName) {
+	public String getCurrentFunction(@Param(name="program", description="optional program name to work with. normally kept empty to select active program.", nullable=true) String programName) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";

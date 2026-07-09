@@ -7,9 +7,9 @@ import javax.swing.SwingUtilities;
 
 import org.eclipse.jetty.http.HttpMethod;
 
+import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
-import com.lauriewired.endpoints.Param;
 import com.lauriewired.mcp.McpTool;
 import static com.lauriewired.util.GhidraUtils.resolveDataType;
 import com.lauriewired.util.StructUtils.StructMember;
@@ -60,7 +60,8 @@ public final class AddClassMembers extends Handler {
 	@McpTool(name = "add_class_members", description = "Add members to an existing C++ class.")
 	@HttpRoute(method = HttpMethod.POST, path = "/add_class_members")
 	public String addClassMembers(@Param(name = "class_name", description = "The name of the class to modify.") String className, @Param(name = "parent_namespace", nullable = true, description = "The parent namespace where the class is located (optional).") String parentNamespace,
-								  @Param(name = "members", description = "List of member dicts with 'name', 'type', and optionally 'offset' and 'comment'. Example: [{'name': 'health', 'type': 'float'}]") StructMember[] members, @Param(name = "program", nullable = true) String programName) {
+								  @Param(name = "members", description = "List of member dicts with 'name', 'type', and optionally 'offset' and 'comment'. Example: [{'name': 'health', 'type': 'float'}]") StructMember[] members, 
+								  @Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable = true) String programName) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";

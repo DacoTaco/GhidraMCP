@@ -7,9 +7,9 @@ import javax.swing.SwingUtilities;
 
 import org.eclipse.jetty.http.HttpMethod;
 
+import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
-import com.lauriewired.endpoints.Param;
 import com.lauriewired.mcp.McpTool;
 
 import ghidra.framework.plugintool.PluginTool;
@@ -43,7 +43,9 @@ public final class ClearStruct extends Handler {
 	 */
 	@HttpRoute(method = HttpMethod.POST, path = "/clear_struct")
     @McpTool(name = "clear_struct", description = "Remove all members from a structure.")
-	public String clearStruct(@Param(name = "program", nullable = true) String programName, @Param(name = "struct_name", description = "The name of the structure to clear.") String structName, @Param(name = "category", nullable = true, description = "The category path for the structure. Defaults to root.") String category){
+	public String clearStruct(@Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable = true) String programName, 
+							  @Param(name = "struct_name", description = "The name of the structure to clear.") String structName, 
+							  @Param(name = "category", nullable = true, description = "The category path for the structure. Defaults to root.") String category){
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "No program loaded";
