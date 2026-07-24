@@ -1,7 +1,6 @@
 package com.lauriewired.handlers;
 
 import com.lauriewired.util.GhidraUtils;
-import com.sun.net.httpserver.HttpExchange;
 
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.listing.Program;
