@@ -60,7 +60,7 @@ dependencies {
 
     // HttpServer & Servlet dependencies
     implementation 'jakarta.servlet:jakarta.servlet-api:6.1.0'
-    implementation "org.eclipse.jetty:jetty-server:12.1.10"
+    implementation "org.eclipse.jetty:jetty-server:12.1.11"
     implementation "org.eclipse.jetty.ee10:jetty-ee10-servlet:12.1.11"
 
     testImplementation 'junit:junit:4.13.2'
