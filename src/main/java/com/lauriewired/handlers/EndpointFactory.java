@@ -48,7 +48,7 @@ public final class EndpointFactory {
                     SyncToolSpecification specs = m.getAnnotation(McpTool.class) != null
                         ? mcpToolFactory.create(handler, m)
                         : null;
-                    Msg.info(GhidraMCPPlugin.class, "Registered command handler: " + handlerClass.getSimpleName());
+                    Msg.info(GhidraMCPPlugin.class, "Registered command handler: " + handlerClass.getSimpleName() + "." + m.getName());
                     
                     endpoints.add(
                         new ServerEndpoint(

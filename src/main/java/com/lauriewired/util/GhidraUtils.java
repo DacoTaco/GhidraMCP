@@ -1,21 +1,15 @@
 package com.lauriewired.util;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import javax.swing.SwingUtilities;
 
 import ghidra.app.services.DataTypeManagerService;
 import ghidra.app.services.ProgramManager;
 import ghidra.framework.model.Project;
 import ghidra.framework.model.ToolManager;
 import ghidra.framework.plugintool.PluginTool;
-import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeManager;
-import ghidra.program.model.listing.CommentType;
 import ghidra.program.model.listing.Program;
 import ghidra.util.Msg;
 import ghidra.util.data.DataTypeParser;
@@ -152,45 +146,5 @@ public final class GhidraUtils {
 		// Fallback to int if we couldn't find it
 		Msg.warn(GhidraUtils.class, "Unknown type: " + typeName + ", defaulting to int");
 		return dtm.getDataType("/int");
-	}
-
-	/**
-	 * Sets a comment at the specified address in the current program.
-	 *
-	 * @param tool            the plugin tool
-	 * @param addressStr      the address as a string
-	 * @param comment         the comment to set
-	 * @param commentType     the type of comment (e.g., CodeUnit.PLATE_COMMENT)
-	 * @param transactionName the name of the transaction for logging
-	 * @return true if successful, false otherwise
-	 */
-	public static boolean setCommentAtAddress(PluginTool tool, String programName, String addressStr, String comment, CommentType commentType, String transactionName) {
-		Program program = getProgramByName(tool, programName);
-		if (program == null)
-			return false;
-		if (addressStr == null || addressStr.isEmpty() || comment == null)
-			return false;
-
-		AtomicBoolean success = new AtomicBoolean(false);
-
-		try {
-			SwingUtilities.invokeAndWait(() -> {
-				int tx = program.startTransaction(transactionName);
-				try {
-					Address addr = program.getAddressFactory().getAddress(addressStr);
-					program.getListing().setComment(addr, commentType, comment);
-					success.set(true);
-				} catch (Exception e) {
-					Msg.error(GhidraUtils.class, "Error setting " + transactionName.toLowerCase(), e);
-				} finally {
-					program.endTransaction(tx, success.get());
-				}
-			});
-		} catch (InterruptedException | InvocationTargetException e) {
-			Msg.error(GhidraUtils.class,
-					"Failed to execute " + transactionName.toLowerCase() + " on Swing thread", e);
-		}
-
-		return success.get();
 	}
 }

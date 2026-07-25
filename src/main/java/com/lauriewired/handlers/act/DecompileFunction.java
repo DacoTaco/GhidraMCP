@@ -39,9 +39,7 @@ public final class DecompileFunction extends Handler {
 	 * @param addressStr the address of the function to decompile
 	 * @return The decompiled C pseudocode or an error message if the function is
 	 *         not found.
-	 * @deprecated This method only returns global functions. Use
-	 *             {@link #findFunctionsByName(String)} instead, which
-	 *             correctly handles namespaces.
+	 * @deprecated This method works, but was merged into {@link #DecompileFunction(String)} instead.
 	 */
 	@Deprecated(forRemoval = true)
 	@HttpRoute(method=HttpMethod.POST, path="/decompile")
