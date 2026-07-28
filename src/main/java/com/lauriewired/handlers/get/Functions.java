@@ -2,6 +2,7 @@ package com.lauriewired.handlers.get;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 import org.eclipse.jetty.http.HttpMethod;
@@ -41,8 +42,9 @@ public final class Functions extends Handler {
 	@HttpRoute(method = HttpMethod.GET, path = "/searchFunctions")
     public String SearchFunctionsByName(@Param(name = "query") String searchTerm, @Param(name = "offset", nullable = true) Integer offset,
             							@Param(name = "limit", nullable = true) Integer limit, 
-										@Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable = true) String programName) {
-		return GetFunctions(searchTerm, null, offset, limit, programName);
+										@Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable = true) String programName) 
+										throws Exception {
+		return String.join("\n", GetFunctions(searchTerm, null, offset, limit, programName).stream().map(info -> FormatFunction(info)).toList());
 	}
 
 	/**
@@ -53,8 +55,9 @@ public final class Functions extends Handler {
 	 */
 	@Deprecated(forRemoval = true)
 	@HttpRoute(method=HttpMethod.GET, path = "/list_functions")
-	public String ListFunctions(@Param(name="program", description="optional program name to work with. normally kept empty to select active program.", nullable=true) String programName) {
-		return GetFunctions(null, null, 0, null, programName);
+	public String ListFunctions(@Param(name="program", description="optional program name to work with. normally kept empty to select active program.", nullable=true) String programName) 
+								throws Exception {
+		return String.join("\n", GetFunctions(null, null, 0, null, programName).stream().map(info -> FormatFunction(info)).toList());
 	}
 
 	/**
@@ -67,11 +70,12 @@ public final class Functions extends Handler {
 	@Deprecated(forRemoval = true)
 	@HttpRoute(method = HttpMethod.GET, path = "/get_function_by_address")
 	public String GetFunctionByAddress(@Param(name = "address") String addressStr, 
-									   @Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable = true) String programName) {
+									   @Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable = true) String programName)
+									   throws Exception {
 		if (addressStr == null || addressStr.isEmpty())
 			return "Address is required";
 
-		return GetFunctions(null, addressStr, 0, null, programName);
+		return String.join("\n", GetFunctions(null, addressStr, 0, null, programName).stream().map(info -> FormatFunction(info)).toList());
 	}
 
 	/**
@@ -87,17 +91,19 @@ public final class Functions extends Handler {
 	@HttpRoute(method=HttpMethod.GET, path="/methods")
 	public String GetMethods(@Param(name="program", description="optional program name to work with. normally kept empty to select active program.", nullable=true) String programName, 
 							 @Param(name="offset", description="The starting index for pagination.", nullable=true) Integer offset, 
-							 @Param(name="limit", description="The maximum number of function names to return.", nullable=true) Integer limit) {
-		return GetFunctions(null, null,offset, limit, programName);
+							 @Param(name="limit", description="The maximum number of function names to return.", nullable=true) Integer limit) throws Exception {
+		return String.join("\n", GetFunctions(null, null,offset, limit, programName).stream().map(info -> FormatFunction(info)).toList());
 	}
 
-	private String FormatFunction(Function func) {
+	private String FormatFunction(FunctionInformation func) {
 		return String.format("%s(%s - %s): %s",
-				func.getEntryPoint(),
-				func.getBody().getMinAddress(),
-				func.getBody().getMaxAddress(),
-				func.getSignature());
+				func.Entrypoint,
+				func.StartAddress,
+				func.EndAddress,
+				func.Signature);
 	}
+
+	public record FunctionInformation(String Entrypoint, String Name, String Signature, String StartAddress, String EndAddress){}
 
 	/**
 	 * Searches for functions in the current program by name.
@@ -110,25 +116,27 @@ public final class Functions extends Handler {
 	 */
 	@HttpRoute(method = HttpMethod.GET, path = "/functions")
     @McpTool(name = "get_functions", description = "Get functions in the database, optionally filtering by name or address.")
-	public String GetFunctions(@Param(name = "query", nullable = true, description = "The optionalterm to search for in function names.") String searchTerm, 
+	public List<FunctionInformation> GetFunctions(@Param(name = "query", nullable = true, description = "The optionalterm to search for in function names.") String searchTerm, 
 							   @Param(name = "address", nullable = true) String address,
 							   @Param(name = "offset", nullable = true) Integer offset,
 							   @Param(name = "limit", nullable = true) Integer limit, 
-							   @Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable = true) String programName) {
+							   @Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable = true) String programName) 
+							   throws Exception {
 		Program program = getProgramByName(programName);
 		if (program == null)
-			return "No program loaded";
+			throw new Exception((programName == null || programName.isEmpty()) ? "No program loaded" : "No Program with name '" + programName + "is loaded");
 
-		List<String> matches = new ArrayList<>();
+		List<FunctionInformation> matches = new ArrayList<>();
 		if (address != null && !address.isEmpty())
 		{
 			Address addr = program.getAddressFactory().getAddress(address);
 			Function func = program.getFunctionManager().getFunctionAt(addr);
 
 			if (func == null)
-				return "No function found at address " + address;
+				throw new Exception("No function found at address " + address);
 
-			matches.add(FormatFunction(func));
+			matches.add(new FunctionInformation(func.getEntryPoint().toString(), func.getName(), func.getSignature().toString(), 
+												func.getBody().getMinAddress().toString(), func.getBody().getMaxAddress().toString()));
 		}
 		else
 		{
@@ -138,15 +146,16 @@ public final class Functions extends Handler {
 				if((searchTerm != null && !searchTerm.isEmpty()) && !name.toLowerCase().contains(searchTerm.toLowerCase()))
 					continue;
 
-				matches.add(FormatFunction(func));
+				matches.add(new FunctionInformation(func.getEntryPoint().toString(), func.getName(), func.getSignature().toString(), 
+							func.getBody().getMinAddress().toString(), func.getBody().getMaxAddress().toString()));
 			}
 		}
 
 		if (matches.isEmpty()) {
-			return "No matching functions found";
+			throw new Exception("No matching functions found");
 		}
 
-		Collections.sort(matches);
+		matches.sort(Comparator.comparing(FunctionInformation::Entrypoint));
 		offset = (offset == null) ? 0 : offset;
         limit = (limit == null) ? matches.size() : limit;
 		return paginateList(matches, offset, limit);

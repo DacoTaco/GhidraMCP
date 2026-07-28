@@ -39,11 +39,11 @@ public final class ListSegments extends Handler {
 	 */
 	@HttpRoute(method = HttpMethod.GET, path = "/segments")
     @McpTool(name = "list_segments", description = "List all memory segments in the program with pagination.")
-	public String listSegments(@Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable = true) String programName, 
-							   @Param(name = "offset", nullable = true) Integer offset, @Param(name = "limit", nullable = true) Integer limit) {
+	public List<String> listSegments(@Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable = true) String programName, 
+							   		 @Param(name = "offset", nullable = true) Integer offset, @Param(name = "limit", nullable = true) Integer limit) {
 		Program program = getProgramByName(programName);
 		if (program == null)
-			return "No program loaded";
+			return List.of((programName == null || programName.isEmpty()) ? "No program loaded" : "No Program with name '" + programName + "is loaded");
 
 		offset = (offset == null) ? 0 : offset;
         limit = (limit == null) ? 100 : limit;

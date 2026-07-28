@@ -45,11 +45,11 @@ public final class ListNamespaces extends Handler {
 	 */
 	@HttpRoute(method = HttpMethod.GET, path = "/namespaces")
     @McpTool(name = "list_namespaces", description = "List all non-global namespaces in the program with pagination.")
-	public String listNamespaces(@Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable = true) String programName, 
+	public List<String> listNamespaces(@Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable = true) String programName, 
 								 @Param(name = "offset", nullable = true) Integer offset, @Param(name = "limit", nullable = true) Integer limit) {
 		Program program = getProgramByName(programName);
 		if (program == null)
-			return "No program loaded";
+			return List.of((programName == null || programName.isEmpty()) ? "No program loaded" : "No Program with name '" + programName + "is loaded");
 
 		offset = (offset == null) ? 0 : offset;
         limit = (limit == null) ? 100 : limit;

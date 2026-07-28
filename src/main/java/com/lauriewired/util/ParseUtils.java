@@ -1,12 +1,9 @@
 package com.lauriewired.util;
 
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
-import com.google.gson.Gson;
-
 import ghidra.program.model.address.Address;
-import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 
 /**
  * Utility methods for parsing HTTP requests and responses.
@@ -17,28 +14,6 @@ import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
  */
 public final class ParseUtils {
 
-	public static CallToolResult mcpSuccess(Object result) {
-		List<String> message = (result instanceof String s) 
-			? Arrays.asList(s.split("\\r?\\n"))
-			: Arrays.asList(new Gson().toJson(result));
-
-		return CallToolResult.builder()
-			.isError(false)
-			.textContent(message)
-			.build();
-	}
-
-	public static CallToolResult mcpError(Object error) {
-		List<String> message = (error instanceof String s) 
-			? Arrays.asList(s.split("\\r?\\n"))
-			: Arrays.asList(new Gson().toJson(error));
-
-		return CallToolResult.builder()
-			.isError(true)
-			.textContent(message)
-			.build();
-	}
-
 	/**
 	 * Paginate a list of items based on offset and limit.
 	 * 
@@ -48,17 +23,16 @@ public final class ParseUtils {
 	 * @return A string containing the paginated items, each on a new line.
 	 *         If the offset is beyond the list size, returns an empty string.
 	 */
-	public static String paginateList(List<String> items, int offset, int limit) {
+	public static <T> List<T> paginateList(List<T> items, int offset, int limit) {
 		int start = Math.max(0, offset);
-		int end = Math.min(items.size(), offset + limit);
+		int end = Math.min(items.size(), start + limit);
 
 		if (start >= items.size()) {
-			return ""; // no items in range
+			return Collections.emptyList();
 		}
-		List<String> sub = items.subList(start, end);
-		return String.join("\n", sub);
-	}
 
+		return items.subList(start, end);
+	}
 	/**
 	 * Escape non-ASCII characters in a string.
 	 * 

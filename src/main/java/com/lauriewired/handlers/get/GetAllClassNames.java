@@ -43,12 +43,12 @@ public final class GetAllClassNames extends Handler {
 	 */
 	@HttpRoute(method=HttpMethod.GET, path="/classes")
 	@McpTool(name = "list_classes", description = "List all class names in the current program with optional pagination.")
-	public String generateResponse(@Param(name="program", description="optional program name to work with. normally kept empty to select active program.", nullable=true) String programName, 
+	public List<String> generateResponse(@Param(name="program", description="optional program name to work with. normally kept empty to select active program.", nullable=true) String programName, 
 								   @Param(name="offset", description="The starting index for pagination.", nullable=true) Integer offset, 
 								   @Param(name="limit", description="The maximum number of class names to return.", nullable=true) Integer limit) {
 		Program program = getProgramByName(programName);
 		if (program == null)
-			return "No program loaded";
+			return List.of((programName == null || programName.isEmpty()) ? "No program loaded" : "No Program with name '" + programName + "is loaded");
 
 		if(offset == null)
 			offset = 0;

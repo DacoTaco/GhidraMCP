@@ -39,15 +39,16 @@ public final class GetFunctionXrefs extends Handler {
 	 */
 	@HttpRoute(method = HttpMethod.GET, path = "/function_xrefs")
     @McpTool(name = "get_function_xrefs", description = "Get all references to the specified function by name")
-    public String getFunctionXrefs(@Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable=true) String programName, 
-								   @Param(name = "name", description = "Function name to search for.") String functionName,
-                                   @Param(name = "offset", nullable = true, description = "Pagination offset (default: 0).") Integer offset, @Param(name = "limit", nullable = true, description = "Maximum number of references to return (default: 100).") Integer limit
+    public List<String> getFunctionXrefs(@Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable=true) String programName, 
+								   		 @Param(name = "name", description = "Function name to search for.") String functionName,
+                                   		 @Param(name = "offset", nullable = true, description = "Pagination offset (default: 0).") Integer offset, 
+										 @Param(name = "limit", nullable = true, description = "Maximum number of references to return (default: 100).") Integer limit
     ) {
 		Program program = getProgramByName(programName);
 		if (program == null)
-			return "No program loaded";
+			return List.of((programName == null || programName.isEmpty()) ? "No program loaded" : "No Program with name '" + programName + "is loaded");
 		if (functionName == null || functionName.isEmpty())
-			return "Function name is required";
+			return List.of("Function name is required");
 
 		offset = (offset == null) ? 0 : offset;
         limit = (limit == null) ? 100 : limit;
@@ -74,12 +75,12 @@ public final class GetFunctionXrefs extends Handler {
 			}
 
 			if (refs.isEmpty()) {
-				return "No references found to function: " + functionName;
+				return List.of("No references found to function: " + functionName);
 			}
 
 			return paginateList(refs, offset, limit);
 		} catch (Exception e) {
-			return "Error getting function references: " + e.getMessage();
+			return List.of("Error getting function references: " + e.getMessage());
 		}
 	}
 }

@@ -42,13 +42,13 @@ public final class ListDefinedStrings extends Handler {
 	 */
 	@HttpRoute(method = HttpMethod.GET, path = "/strings")
     @McpTool(name = "list_strings", description = "List all defined strings in the program with their addresses.")
-	public String listDefinedStrings(@Param(name = "offset", nullable = true, description = "Pagination offset (default: 0).") Integer offset, 
+	public List<String> listDefinedStrings(@Param(name = "offset", nullable = true, description = "Pagination offset (default: 0).") Integer offset, 
 									 @Param(name = "limit", nullable = true, description = "Maximum number of strings to return (default: 2000).") Integer limit, 
 									 @Param(name = "filter", nullable = true, description = "Optional filter to match within string content.") String filter, 
 									 @Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable = true) String programName) {
 		Program program = getProgramByName(programName);
 		if (program == null)
-			return "No program loaded";
+			return List.of((programName == null || programName.isEmpty()) ? "No program loaded" : "No Program with name '" + programName + "is loaded");
 
 		offset = (offset == null) ? 0 : offset;
         limit = (limit == null) ? 100 : limit;

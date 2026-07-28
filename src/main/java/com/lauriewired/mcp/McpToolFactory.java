@@ -12,12 +12,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.google.gson.Gson;
 import com.lauriewired.endpoints.ArgumentBinder;
 import com.lauriewired.endpoints.Param;
-import static com.lauriewired.util.ParseUtils.mcpError;
-import static com.lauriewired.util.ParseUtils.mcpSuccess;
 
 import io.modelcontextprotocol.server.McpServerFeatures.SyncToolSpecification;
+import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import io.modelcontextprotocol.spec.McpSchema.Tool;
 
 public final class McpToolFactory {
@@ -41,20 +41,38 @@ public final class McpToolFactory {
         return SyncToolSpecification.builder()
             .tool(tool)
             .callHandler((exchange, request) -> {
-
                 try {
-                    return mcpSuccess(method.invoke(handler, argumentBinder.bind(request, method)));
+                    return generateResponse(true, method.invoke(handler, argumentBinder.bind(request, method)));
                 }
                 catch (InvocationTargetException e) {
-                    return mcpError(e.getCause().getMessage());
+                    return generateResponse(false, e.getCause().getMessage());
                 }
                 catch (Exception e) {
-                    return mcpError(e.getMessage());
+                    return generateResponse(false, e.getMessage());
                 }
 
             })
             .build();
     }
+
+    private static CallToolResult generateResponse(boolean isSuccess, Object result) {
+        Gson gson = new Gson();
+        List<String> message;
+
+        switch (result) {
+            case List<?> list -> 
+                message = list.stream()
+                    .map(item -> item instanceof String s ? s : gson.toJson(item))
+                    .toList();
+            case String s -> message = Arrays.asList(s.split("\\r?\\n"));
+            default -> message = List.of(gson.toJson(result));
+        }
+
+		return CallToolResult.builder()
+			.isError(!isSuccess)
+			.textContent(message)
+			.build();
+	}
 
     private Map<String, Object> createSchema(Method method) {
         Parameter[] parameters = method.getParameters();

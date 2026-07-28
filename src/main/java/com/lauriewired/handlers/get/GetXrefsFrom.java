@@ -41,13 +41,13 @@ public final class GetXrefsFrom extends Handler {
 	 */
 	@HttpRoute(method = HttpMethod.GET, path = "/xrefs_from")
     @McpTool(name = "get_xrefs_from", description = "Get all references from the specified address (xref from)")
-	public String getXrefsFrom(@Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable = true) String programName, 
+	public List<String> getXrefsFrom(@Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable = true) String programName, 
 							   @Param(name = "address", description = "Source address in hex format (e.g. 0x1400010a0).") String addressStr,
             				   @Param(name = "offset", nullable = true, description = "Pagination offset (default: 0).") Integer offset, 
 							   @Param(name = "limit", nullable = true, description = "Maximum number of references to return (default: 100).") Integer limit) {
 		Program program = getProgramByName(programName);
 		if (program == null)
-			return "No program loaded";
+			return List.of((programName == null || programName.isEmpty()) ? "No program loaded" : "No Program with name '" + programName + "is loaded");
 
 		offset = (offset == null) ? 0 : offset;
         limit = (limit == null) ? 100 : limit;
@@ -79,7 +79,7 @@ public final class GetXrefsFrom extends Handler {
 
 			return paginateList(refs, offset, limit);
 		} catch (Exception e) {
-			return "Error getting references from address: " + e.getMessage();
+			return List.of("Error getting function references: " + e.getMessage());
 		}
 	}
 }
