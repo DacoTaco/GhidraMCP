@@ -23,42 +23,6 @@ import ghidra.util.data.DataTypeParser.AllowedDataTypes;
  */
 public final class GhidraUtils {
 
-	/**
-	 * Resolve a program by name using the provided PluginTool. If programName is
-	 * null or empty, returns the current program.
-	 */
-	public static Program getProgramByName(PluginTool tool, String programName) {
-		Project project = tool.getProject();
-        if (project == null) {
-            return null;
-        }
-
-		ToolManager tm = project.getToolManager();
-		if (tm == null) {
-			return null;
-		}
-
-		//Lookup program by name across all open programs in all tools
-		for (PluginTool runningTool : tm.getRunningTools()) {
-			ProgramManager pm = runningTool.getService(ProgramManager.class);
-			if (pm == null)
-				continue;
-
-			for (Program p : pm.getAllOpenPrograms()) {
-				if (programName == null || programName.isEmpty())
-					return p;
-
-				if (p.getName().equals(programName)
-						|| p.getDomainFile().getName().equals(programName)
-						|| p.getDomainFile().getPathname().equals(programName)) {
-					return p;
-				}
-			}
-		}
-		
-        return null;
-	}
-
 	public static <T> T resolveService(PluginTool currentTool, Program program, Class<T> serviceClass) 
 	{
 		if (currentTool == null || serviceClass == null)
