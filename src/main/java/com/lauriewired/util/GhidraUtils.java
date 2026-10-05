@@ -2,12 +2,14 @@ package com.lauriewired.util;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import ghidra.app.services.DataTypeManagerService;
 import ghidra.app.services.ProgramManager;
 import ghidra.framework.model.Project;
 import ghidra.framework.model.ToolManager;
 import ghidra.framework.plugintool.PluginTool;
+import ghidra.program.model.data.CategoryPath;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.listing.Program;
@@ -15,100 +17,156 @@ import ghidra.util.Msg;
 import ghidra.util.data.DataTypeParser;
 import ghidra.util.data.DataTypeParser.AllowedDataTypes;
 
-
 /**
- * Utility class for Ghidra-related operations.
- * Provides methods to interact with the current program, resolve data types,
- * and set comments at specific addresses.
+ * Utility class for Ghidra-related operations. Provides methods to interact
+ * with the current program, resolve data types, and set comments at specific
+ * addresses.
  */
 public final class GhidraUtils {
 
-	public static <T> T resolveService(PluginTool currentTool, Program program, Class<T> serviceClass) 
-	{
-		if (currentTool == null || serviceClass == null)
-			return null;
+    public static <T> T resolveService(PluginTool currentTool, Program program, Class<T> serviceClass) {
+        if (currentTool == null || serviceClass == null) {
+            return null;
+        }
 
-		// 1. Try current tool first (and optionally verify program context)
-		T service = currentTool.getService(serviceClass);
-		if (service != null && isProgramInTool(currentTool, program))
-			return service;
+        // 1. Try current tool first (and optionally verify program context)
+        T service = currentTool.getService(serviceClass);
+        if (service != null && isProgramInTool(currentTool, program)) {
+            return service;
+        }
 
-		Project project = currentTool.getProject();
-		if (project == null)
-			return null;
+        Project project = currentTool.getProject();
+        if (project == null) {
+            return null;
+        }
 
-		ToolManager tm = project.getToolManager();
-		if (tm == null)
-			return null;
+        ToolManager tm = project.getToolManager();
+        if (tm == null) {
+            return null;
+        }
 
-		// 2. Search other tools, but ONLY those that have the program open
-		for (PluginTool tool : tm.getRunningTools()) {
-			if (tool == null)
-				continue;
+        // 2. Search other tools, but ONLY those that have the program open
+        for (PluginTool tool : tm.getRunningTools()) {
+            if (tool == null) {
+                continue;
+            }
 
-			if (!isProgramInTool(tool, program))
-				continue;
+            if (!isProgramInTool(tool, program)) {
+                continue;
+            }
 
-			service = tool.getService(serviceClass);
-			if (service != null)
-				return service;
-		}
+            service = tool.getService(serviceClass);
+            if (service != null) {
+                return service;
+            }
+        }
 
-		return null;
-	}
+        return null;
+    }
 
-	private static boolean isProgramInTool(PluginTool tool, Program program) {
-		if (tool == null || program == null)
-			return false;
+    private static boolean isProgramInTool(PluginTool tool, Program program) {
+        if (tool == null || program == null) {
+            return false;
+        }
 
-		ProgramManager pm = tool.getService(ProgramManager.class);
-		if (pm == null)
-			return false;
+        ProgramManager pm = tool.getService(ProgramManager.class);
+        if (pm == null) {
+            return false;
+        }
 
-		for (Program p : pm.getAllOpenPrograms()) {
-			if (p == program)
-				return true;
-		}
+        for (Program p : pm.getAllOpenPrograms()) {
+            if (p == program) {
+                return true;
+            }
+        }
 
-		return false;
-	}
+        return false;
+    }
 
-	/**
-	 * Resolves a data type by name, handling common types and pointer types
-	 *
-	 * @param tool     The plugin tool to use for services
-	 * @param dtm      The data type manager
-	 * @param typeName The type name to resolve
-	 * @return The resolved DataType, or null if not found
-	 */
-	public static DataType resolveDataType(PluginTool tool, Program program, DataTypeManager dtm, String typeName) {
-		DataTypeManagerService dtms = resolveService(tool, program, DataTypeManagerService.class);
-		DataTypeManager[] managers = dtms.getDataTypeManagers();
-		DataType dt = null;
+    /**
+     * Resolves a data type by name, handling common types and pointer types
+     *
+     * @param tool The plugin tool to use for services
+     * @param dtm The data type manager
+     * @param typeName The type name to resolve
+     * @return The resolved DataType, or null if not found
+     */
+    public static DataType resolveDataType(PluginTool tool, Program program, DataTypeManager dtm, String typeName) {
+        DataTypeManagerService dtms = resolveService(tool, program, DataTypeManagerService.class);
+        DataTypeManager[] managers = dtms.getDataTypeManagers();
+        DataType dt;
 
-		List<DataTypeManager> managerList = new ArrayList<>();
-		for (DataTypeManager manager : managers) {
-			if (manager != dtm)
-				managerList.add(manager);
-		}
-		managerList.addFirst(dtm);
+        List<DataTypeManager> managerList = new ArrayList<>();
+        for (DataTypeManager manager : managers) {
+            if (manager != dtm) {
+                managerList.add(manager);
+            }
+        }
+        managerList.addFirst(dtm);
 
-		DataTypeParser parser = null;
+        DataTypeParser parser;
 
-		for (DataTypeManager manager : managerList) {
-			try {
-				parser = new DataTypeParser(manager, null, null, AllowedDataTypes.ALL);
-				dt = parser.parse(typeName);
-				if (dt != null) {
-					return dt; // Found a successful parse, return
-				}
-			} catch (Exception e) {
-				// Continue to next manager if this one fails
-			}
-		}
+        for (DataTypeManager manager : managerList) {
+            try {
+                parser = new DataTypeParser(manager, null, null, AllowedDataTypes.ALL);
+                dt = parser.parse(typeName);
+                if (dt != null) {
+                    return dt; // Found a successful parse, return
+                }
+            } catch (Exception e) {
+                // Continue to next manager if this one fails
+            }
+        }
 
-		// Fallback to int if we couldn't find it
-		Msg.warn(GhidraUtils.class, "Unknown type: " + typeName + ", defaulting to int");
-		return dtm.getDataType("/int");
-	}
+        // Fallback to int if we couldn't find it
+        Msg.warn(GhidraUtils.class, "Unknown type: " + typeName + ", defaulting to int");
+        return dtm.getDataType("/int");
+    }
+
+    /**
+     * Finds a data type of a specific kind (struct, typedef, ...) by name in
+     * the given category or any category below it. A data type that lives
+     * directly in the given category always wins, so a precise lookup never
+     * changes. Otherwise the subcategories are searched and the name has to be
+     * unique within them.
+     *
+     * @param dtm The data type manager to search
+     * @param name The name of the data type
+     * @param scope The category to search in, including all its subcategories
+     * @param type The kind of data type to look for, also used in error
+     * messages
+     * @return The data type that was found
+     * @throws IllegalArgumentException if nothing is found, or if the name is
+     * ambiguous
+     */
+    public static <T extends DataType> T findDataType(Class<T> type, DataTypeManager dtm, String name, CategoryPath scope) {
+        DataType exact = dtm.getDataType(scope, name);
+        if (type.isInstance(exact)) {
+            return type.cast(exact);
+        }
+
+        List<DataType> candidates = new ArrayList<>();
+        dtm.findDataTypes(name, candidates);
+
+        List<T> matches = candidates
+                .stream()
+                .filter(candidate -> type.isInstance(candidate) && candidate.getCategoryPath().isAncestorOrSelf(scope))
+                .map(type::cast)
+                .collect(Collectors.toList());
+
+        if (matches.isEmpty()) {
+            throw new IllegalArgumentException("Error: " + type.getSimpleName() + " " + name + " not found in category " + scope + " or its subcategories");
+        }
+
+        if (matches.size() > 1) {
+            String categories = matches.stream()
+                    .map(m -> m.getCategoryPath().getPath())
+                    .sorted()
+                    .collect(Collectors.joining(", "));
+            throw new IllegalArgumentException("Error: " + type.getSimpleName() + " " + name + " is ambiguous in category " + scope
+                    + ", found in: " + categories + ". Specify one of these categories.");
+        }
+
+        return matches.getFirst();
+    }
 }
