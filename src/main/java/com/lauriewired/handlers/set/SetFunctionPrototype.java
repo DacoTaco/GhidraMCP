@@ -12,8 +12,10 @@ import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
 import com.lauriewired.mcp.McpTool;
 
+import ghidra.app.cmd.function.FunctionRenameOption;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.address.Address;
+import ghidra.program.model.data.DataTypeConflictHandler;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.listing.CommentType;
 import ghidra.program.model.listing.Function;
@@ -208,7 +210,7 @@ public final class SetFunctionPrototype extends Handler {
 
 			// Create and apply the command
 			ghidra.app.cmd.function.ApplyFunctionSignatureCmd cmd = new ghidra.app.cmd.function.ApplyFunctionSignatureCmd(
-					addr, sig, SourceType.USER_DEFINED);
+					addr, sig, SourceType.USER_DEFINED, false, false, DataTypeConflictHandler.DEFAULT_HANDLER, FunctionRenameOption.RENAME);
 
 			// Apply the command to the program
 			boolean cmdResult = cmd.applyTo(program, new ConsoleTaskMonitor());
