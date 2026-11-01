@@ -125,7 +125,7 @@ public final class McpToolFactory {
 
         if (type == int.class || type == Integer.class ||
             type == long.class || type == Long.class) {
-            schema.put("type", "integer");
+            schema.put("type", List.of("integer", "string"));
             return schema;
         }
 

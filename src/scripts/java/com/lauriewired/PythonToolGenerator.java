@@ -176,8 +176,8 @@ public final class PythonToolGenerator {
     /** Maps a Java type to a Python type annotation string. */
     private String javaToPythonType(Class<?> type) {
         if (type == String.class) return "str";
-        if (type == int.class || type == Integer.class) return "int";
-        if (type == long.class || type == Long.class) return "int";
+        if (type == int.class || type == Integer.class) return "int | str";
+        if (type == long.class || type == Long.class) return "int | str";
         if (type == boolean.class || type == Boolean.class) return "bool";
         if (type == double.class || type == Double.class) return "float";
         if (type == float.class || type == Float.class) return "float";

@@ -172,8 +172,9 @@ public final class ArgumentBinder {
         // HTTP values will typically end up here since its all strings
         if (value instanceof String s) {
             if (type == String.class) return s;
-            if (type == int.class || type == Integer.class) return Integer.valueOf(s);
-            if (type == long.class || type == Long.class) return Long.valueOf(s);
+            if (type == int.class || type == Integer.class) return Math.toIntExact(parseLong(s));
+            if (type == long.class || type == Long.class) return parseLong(s);
+            if (type == String[].class) return parseStringArray(s);
             if (type == boolean.class || type == Boolean.class) return Boolean.valueOf(s);
             if (type == double.class || type == Double.class) return Double.valueOf(s);
             if (type == float.class || type == Float.class) return Float.valueOf(s);
@@ -183,5 +184,28 @@ public final class ArgumentBinder {
 
         // Complex objects
         return gson.fromJson(gson.toJsonTree(value), type);
+    }
+
+    private static long parseLong(String value) {
+        String s = value.trim();
+        boolean negative = s.startsWith("-");
+        if (negative || s.startsWith("+"))
+            s = s.substring(1);
+
+        try {
+            long result = (s.startsWith("0x") || s.startsWith("0X"))
+                ? Long.parseLong(s.substring(2), 16)
+                : Long.parseLong(s);
+            return negative ? -result : result;
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid number '" + value + "', expected decimal or 0x prefixed hex");
+        }
+    }
+
+    private String[] parseStringArray(String value) {
+        String s = value.trim();
+        if (s.startsWith("["))
+            return gson.fromJson(s, String[].class);
+        return new String[] { s };
     }
 }
