@@ -21,12 +21,10 @@ import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Program;
-import ghidra.program.model.symbol.SourceType;
-import ghidra.util.Msg;
 import ghidra.util.task.TaskMonitor;
 
 /**
- * Handler for creating, deleting and renaming functions.
+ * Handler for creating, deleting, renaming and moving functions between namespaces.
  */
 public final class Functions extends Handler {
 
@@ -89,14 +87,12 @@ public final class Functions extends Handler {
                     }
                     success = true;
                 } catch (Exception e) {
-                    Msg.error(this, "Create function error", e);
                     error.set(e);
                 } finally {
                     program.endTransaction(tx, success);
                 }
             });
         } catch (InterruptedException | InvocationTargetException e) {
-            Msg.error(this, "Failed to execute create function on Swing thread", e);
             throw new Exception("Failed to execute create function on Swing thread: " + e.getMessage(), e);
         }
 
@@ -152,7 +148,7 @@ public final class Functions extends Handler {
      * @param newName the new name for the function
      * @return a success message, failures throw
      * @deprecated This method is deprecated and will be removed in future
-     * versions. Use {@link #RenameFunction(String, String, String, String)}
+     * versions. Use {@link #RenameFunction(String, String, String, String, String, Boolean)}
      * instead.
      */
     @Deprecated(forRemoval = true)
@@ -160,17 +156,22 @@ public final class Functions extends Handler {
     public String RenameFunctionByAddress(@Param(name = "program", description = "optional program name to work with. normally kept empty to select active program.", nullable = true) String programName,
             @Param(name = "function_address") String functionAddress,
             @Param(name = "new_name") String newName) throws Exception {
-        RenameFunction(programName, null, functionAddress, newName);
+        RenameFunction(programName, null, functionAddress, newName, null, null);
         return "Renamed successfully";
     }
 
     /**
-     * Renames a function in the given program.
+     * Renames a function and sets its namespace. An empty namespace moves the
+     * function to the global namespace.
      *
      * @param functionName the current name of the function
      * @param address the address of the function (optional if functionName is
      * provided)
-     * @param newName the new name to set for the function
+     * @param newName the new name
+     * @param namespacePath the namespace path, e.g. "A::B". Empty or "global"
+     * for the global namespace.
+     * @param asClass create the namespace as a class or convert it to one, and
+     * make the function __thiscall
      * @throws Exception when the function was not found or could not be renamed
      */
     @HttpRoute(method = HttpMethod.POST, path = "/renameFunction")
@@ -178,10 +179,18 @@ public final class Functions extends Handler {
     public void RenameFunction(@Param(name = "program", description = "optional program name to work with. normally kept empty to select active program.", nullable = true) String programName,
             @Param(name = "functionName", description = "The name of the function to rename.", nullable = true) String functionName,
             @Param(name = "functionAddress", description = "The address of the function to rename.", nullable = true) String address,
-            @Param(name = "newName", description = "The new name for the function.", nullable = false) String newName) throws Exception {
+            @Param(name = "newName", description = "The new name for the function.", nullable = false) String newName,
+            @Param(name = "namespace", nullable = true, description = "Namespace path, e.g. 'A::B'. Empty = global.") String namespacePath,
+            @Param(name = "asClass", nullable = true, description = "Make the namespace a class and the function __thiscall.") Boolean asClass) throws Exception {
 
         if ((functionName == null || functionName.isEmpty()) && (address == null || address.isEmpty())) {
             throw new IllegalArgumentException("Either functionName or functionAddress must be provided.");
+        }
+        if (newName == null || newName.isBlank()) {
+            throw new IllegalArgumentException("newName is required");
+        }
+        if (newName.contains("::")) {
+            throw new IllegalArgumentException("newName must not contain '::', put the namespace in 'namespace'");
         }
 
         Program program = getProgramByName(programName);
@@ -189,9 +198,8 @@ public final class Functions extends Handler {
             throw new Exception("Program not found");
         }
 
-        boolean isAddressProvided = address != null && !address.isEmpty();
         Function func;
-        if (!isAddressProvided) {
+        if (address == null || address.isEmpty()) {
             func = StreamSupport
                     .stream(program.getFunctionManager().getFunctions(true).spliterator(), false)
                     .filter(f -> f.getName().equals(functionName) || f.getName(true).equals(functionName))
@@ -206,22 +214,15 @@ public final class Functions extends Handler {
             throw new IllegalArgumentException("Function not found");
         }
 
-        String transactionName = isAddressProvided ? "Rename function by address" : "Rename function by name";
         //copy over so its usable in the transaction lambda
         final Function function = func;
         final AtomicReference<Exception> error = new AtomicReference<>();
         try {
             SwingUtilities.invokeAndWait(() -> {
-                int tx = program.startTransaction(transactionName);
+                int tx = program.startTransaction("Rename function");
                 boolean success = false;
                 try {
-                    // "A::B::name" moves the function into namespace A::B instead of making a flat name containing "::"
-                    String[] parts = NamespacesUtils.SplitQualifiedName(newName);
-                    if (parts[0] != null) {
-                        NamespacesUtils.MoveFunction(program, function, parts[0], parts[1], false);
-                    } else {
-                        function.setName(newName, SourceType.USER_DEFINED);
-                    }
+                    NamespacesUtils.MoveFunction(program, function, namespacePath, newName, asClass == true);
                     success = true;
                 } catch (Exception e) {
                     error.set(new Exception("Rename failed: " + e.getMessage(), e));
@@ -230,7 +231,6 @@ public final class Functions extends Handler {
                 }
             });
         } catch (InterruptedException | InvocationTargetException e) {
-            Msg.error(this, "Failed to execute rename on Swing thread", e);
             throw new Exception("Failed to execute rename on Swing thread: " + e.getMessage(), e);
         }
 
