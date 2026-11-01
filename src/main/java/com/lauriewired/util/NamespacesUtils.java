@@ -9,9 +9,6 @@ import ghidra.program.model.listing.GhidraClass;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.Namespace;
 import ghidra.program.model.symbol.SourceType;
-import ghidra.program.model.symbol.Symbol;
-import ghidra.program.model.symbol.SymbolTable;
-import ghidra.program.model.symbol.SymbolType;
 
 /**
  * Helpers for namespaces and moving symbols between namespaces.
@@ -122,19 +119,5 @@ public final class NamespacesUtils {
         if (asClass && !"__thiscall".equals(function.getCallingConventionName())) {
             function.setCallingConvention("__thiscall");
         }
-    }
-
-    /**
-     * Returns true when a namespace, class or library with this name exists
-     * directly under the parent.
-     */
-    public static boolean Exists(SymbolTable symbolTable, String name, Namespace parent) {
-        for (Symbol symbol : symbolTable.getSymbols(name, parent)) {
-            SymbolType type = symbol.getSymbolType();
-            if (type == SymbolType.NAMESPACE || type == SymbolType.CLASS || type == SymbolType.LIBRARY) {
-                return true;
-            }
-        }
-        return false;
     }
 }
