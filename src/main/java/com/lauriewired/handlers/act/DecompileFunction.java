@@ -7,6 +7,7 @@ import com.lauriewired.endpoints.ParamLocation;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
 import com.lauriewired.mcp.McpTool;
+import com.lauriewired.util.AddressUtils;
 
 import ghidra.app.decompiler.DecompInterface;
 import ghidra.app.decompiler.DecompileOptions;
@@ -82,7 +83,7 @@ public final class DecompileFunction extends Handler {
 		//decompile by address
 		else
 		{
-			Address addr = program.getAddressFactory().getAddress(addressStr);
+			Address addr = AddressUtils.parseAddress(program, addressStr);
 			function = program.getListing().getFunctionContaining(addr);
 		}
 

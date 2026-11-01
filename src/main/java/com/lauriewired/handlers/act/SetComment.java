@@ -11,6 +11,7 @@ import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
 import com.lauriewired.mcp.McpTool;
+import com.lauriewired.util.AddressUtils;
 
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.address.Address;
@@ -82,7 +83,7 @@ public final class SetComment extends Handler {
 			SwingUtilities.invokeAndWait(() -> {
 				int tx = program.startTransaction(transactionName);
 				try {
-					Address addr = program.getAddressFactory().getAddress(address);
+					Address addr = AddressUtils.parseAddress(program, address);
 					program.getListing().setComment(addr, commentType, comment);
 					success.set(true);
 				} catch (Exception e) {

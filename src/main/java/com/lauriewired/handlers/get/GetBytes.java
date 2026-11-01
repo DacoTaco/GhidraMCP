@@ -6,6 +6,7 @@ import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
 import com.lauriewired.mcp.McpTool;
+import com.lauriewired.util.AddressUtils;
 import static com.lauriewired.util.ParseUtils.hexdump;
 
 import ghidra.framework.plugintool.PluginTool;
@@ -49,7 +50,7 @@ public final class GetBytes extends Handler {
 			return "Size must be > 0";
 
 		try {
-			Address addr = program.getAddressFactory().getAddress(addressStr);
+			Address addr = AddressUtils.parseAddress(program, addressStr);
 			byte[] buf = new byte[readSize];
 			int read = program.getMemory().getBytes(addr, buf);
 			return hexdump(addr, buf, read);

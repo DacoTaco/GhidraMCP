@@ -6,6 +6,7 @@ import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
 import com.lauriewired.mcp.McpTool;
+import com.lauriewired.util.AddressUtils;
 
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.address.Address;
@@ -47,7 +48,7 @@ public final class DisassembleFunction extends Handler{
 			return "No program loaded";
 
 		try {
-			Address addr = program.getAddressFactory().getAddress(addressStr);
+			Address addr = AddressUtils.parseAddress(program, addressStr);
 			Function func = program.getListing().getFunctionContaining(addr);
 			if (func == null)
 				return "No function found at or containing address " + addressStr;

@@ -11,6 +11,7 @@ import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
 import com.lauriewired.mcp.McpTool;
+import com.lauriewired.util.AddressUtils;
 
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.disassemble.Disassembler;
@@ -58,7 +59,7 @@ public final class SetBytes extends Handler {
                 int txId = program.startTransaction("Write Bytes");
                 boolean success = false;
                 try {
-                    Address address = program.getAddressFactory().getAddress(addressStr);
+                    Address address = AddressUtils.parseAddress(program, addressStr);
                     Memory memory = program.getMemory();
 
                     String[] byteTokens = bytesStr.trim().split("\\s+");

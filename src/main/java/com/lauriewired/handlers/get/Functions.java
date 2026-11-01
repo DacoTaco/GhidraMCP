@@ -128,7 +128,7 @@ public final class Functions extends Handler {
 		List<FunctionInformation> matches = new ArrayList<>();
 		if (address != null && !address.isEmpty())
 		{
-			Address addr = program.getAddressFactory().getAddress(address);
+			Address addr = AddressUtils.parseAddress(program, address);
 			Function func = program.getFunctionManager().getFunctionAt(addr);
 
 			if (func == null)

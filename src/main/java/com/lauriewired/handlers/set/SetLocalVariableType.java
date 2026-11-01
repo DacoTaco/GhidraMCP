@@ -12,6 +12,7 @@ import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
 import com.lauriewired.mcp.McpTool;
+import com.lauriewired.util.AddressUtils;
 import static com.lauriewired.util.GhidraUtils.resolveDataType;
 
 import ghidra.app.decompiler.DecompInterface;
@@ -133,7 +134,7 @@ public final class SetLocalVariableType extends Handler {
             String variableName, String newType, AtomicBoolean success) {
         try {
             // Find the function
-            Address addr = program.getAddressFactory().getAddress(functionAddrStr);
+            Address addr = AddressUtils.parseAddress(program, functionAddrStr);
             Function func = program.getListing().getFunctionContaining(addr);
 
             if (func == null) {

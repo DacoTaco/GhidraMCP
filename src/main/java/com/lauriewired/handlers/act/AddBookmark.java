@@ -10,6 +10,7 @@ import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
 import com.lauriewired.mcp.McpTool;
+import com.lauriewired.util.AddressUtils;
 
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.address.Address;
@@ -52,7 +53,7 @@ public class AddBookmark extends Handler {
 				int transactionID = currentProgram.startTransaction("Add Bookmark");
 				boolean success = false;
 				try {
-					Address address = currentProgram.getAddressFactory().getAddress(addressStr);
+					Address address = AddressUtils.parseAddress(currentProgram, addressStr);
 					BookmarkManager bookmarkManager = currentProgram.getBookmarkManager();
 					bookmarkManager.setBookmark(address, resolvedType, category, comment);
 					result.set("Bookmark created successfully at " + addressStr);

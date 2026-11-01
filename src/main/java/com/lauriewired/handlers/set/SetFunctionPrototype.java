@@ -11,6 +11,7 @@ import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
 import com.lauriewired.mcp.McpTool;
+import com.lauriewired.util.AddressUtils;
 
 import ghidra.app.cmd.function.FunctionRenameOption;
 import ghidra.framework.plugintool.PluginTool;
@@ -128,7 +129,7 @@ public final class SetFunctionPrototype extends Handler {
 			AtomicBoolean success, StringBuilder errorMessage) {
 		try {
 			// Get the address and function
-			Address addr = program.getAddressFactory().getAddress(functionAddrStr);
+			Address addr = AddressUtils.parseAddress(program, functionAddrStr);
 			Function func = program.getListing().getFunctionContaining(addr);
 
 			if (func == null) {

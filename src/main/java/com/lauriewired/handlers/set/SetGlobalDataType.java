@@ -11,6 +11,7 @@ import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
 import com.lauriewired.mcp.McpTool;
+import com.lauriewired.util.AddressUtils;
 import static com.lauriewired.util.GhidraUtils.resolveDataType;
 
 import ghidra.framework.plugintool.PluginTool;
@@ -107,11 +108,7 @@ public final class SetGlobalDataType extends Handler {
 				boolean success = false;
 				try {
 					// Parse the address
-					Address address = program.getAddressFactory().getAddress(addressStr);
-					if (address == null) {
-						result.set("Error: Invalid address format: " + addressStr);
-						return;
-					}
+					Address address = AddressUtils.parseAddress(program, addressStr);
 
 					// Resolve the data type
 					DataTypeManager dtm = program.getDataTypeManager();

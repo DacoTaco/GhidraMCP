@@ -82,7 +82,7 @@ public final class RenameFunction extends Handler {
 				.orElse(null);
 		} 
 		else {
-			Address addr = program.getAddressFactory().getAddress(address);
+			Address addr = AddressUtils.parseAddress(program, address);
 			func = program.getListing().getFunctionContaining(addr);
 		}
 

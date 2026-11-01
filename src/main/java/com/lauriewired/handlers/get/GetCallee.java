@@ -12,6 +12,7 @@ import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
 import com.lauriewired.mcp.McpTool;
+import com.lauriewired.util.AddressUtils;
 
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.address.Address;
@@ -50,7 +51,7 @@ public class GetCallee extends Handler {
                 return out; // No active program
             }
 
-            Address address = currentProgram.getAddressFactory().getAddress(addressStr);
+            Address address = AddressUtils.parseAddress(currentProgram, addressStr);
             Function fn = currentProgram.getFunctionManager().getFunctionContaining(address);
             if (fn == null) {
                 return out; // No function at the specified address
