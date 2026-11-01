@@ -1,6 +1,7 @@
 package com.lauriewired.handlers.act;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.StreamSupport;
 
@@ -222,7 +223,7 @@ public final class Functions extends Handler {
                 int tx = program.startTransaction("Rename function");
                 boolean success = false;
                 try {
-                    NamespacesUtils.MoveFunction(program, function, namespacePath, newName, asClass == true);
+                    NamespacesUtils.MoveFunction(program, function, namespacePath, newName, Optional.ofNullable(asClass).orElse(false));
                     success = true;
                 } catch (Exception e) {
                     error.set(new Exception("Rename failed: " + e.getMessage(), e));
