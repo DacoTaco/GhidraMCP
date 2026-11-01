@@ -1,6 +1,7 @@
 package com.lauriewired.http;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 
 import org.eclipse.jetty.ee10.servlet.ServletHolder;
@@ -83,6 +84,11 @@ public class ApiServer extends HttpServlet {
         try {
             Object[] args = binder.bind(req, match.method);
             writeResponse(resp, match.method.invoke(match.handler, args));
+
+        } catch (InvocationTargetException e) {
+            Throwable cause = e.getCause();
+            resp.setStatus(cause instanceof IllegalArgumentException ? 400 : 500);
+            resp.getWriter().write("Error: " + cause.getMessage());
 
         } catch (IllegalArgumentException e) {
             resp.setStatus(400);
