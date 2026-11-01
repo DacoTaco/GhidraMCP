@@ -24,7 +24,7 @@ public final class McpToolFactory {
 
     private final ArgumentBinder argumentBinder;
 
-    public McpToolFactory(ArgumentBinder binder){
+    public McpToolFactory(ArgumentBinder binder) {
         this.argumentBinder = binder;
     }
 
@@ -50,7 +50,6 @@ public final class McpToolFactory {
                 catch (Exception e) {
                     return generateResponse(false, e.getMessage());
                 }
-
             })
             .build();
     }
@@ -60,6 +59,7 @@ public final class McpToolFactory {
         List<String> message;
 
         switch (result) {
+            case null -> message = List.of(isSuccess ? "Success" : "Unknown error");
             case List<?> list -> 
                 message = list.stream()
                     .map(item -> item instanceof String s ? s : gson.toJson(item))
