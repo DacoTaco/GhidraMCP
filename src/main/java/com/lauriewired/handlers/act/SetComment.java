@@ -39,7 +39,7 @@ public final class SetComment extends Handler {
 		@Param(name = "comment") String comment,
 		@Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable = true) String program
 	) {
-		return SetComment(program, address, null, comment);
+		return SetComment(address, comment, null, null, program);
 	}
 
 	@Deprecated(forRemoval = true)
@@ -49,42 +49,49 @@ public final class SetComment extends Handler {
 		@Param(name = "comment") String comment,
 		@Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable = true) String program
 	) {
-		return SetComment(program, address, true, comment);
+		return SetComment(address, comment, true, null, program);
 	}
 
 	/**
 	 * Sets a decompiler comment at the specified address
 	 * 
 	 * @param addressStr The address as a string where the comment should be set
-	 * @param comment    The comment to set
+	 * @param comment    The comment to set, empty removes the comment
+	 * @param commentType Optional comment type, overrides disassemblyComment
 	 * @return true if the comment was set successfully, false otherwise
 	 */
 	@HttpRoute(method=HttpMethod.POST, path = "/set_comment")
-	@McpTool(name="set_comment", description="Set a comment for a given address in the function pseudocode or disassembly.")
+	@McpTool(name="set_comment", description="Set or remove a comment for a given address in the function pseudocode or disassembly. An empty comment removes it.")
 	public String SetComment(
 		@Param(name = "address") String address,
-		@Param(name = "comment") String comment,
+		@Param(name = "comment", nullable=true, description="The comment. Empty removes the comment.") String comment,
 		@Param(name = "disassemblyComment", nullable=true, description="Optional, only to be set if you know for sure you want to set a disassembly comment") Boolean disassemblyComment,
+		@Param(name = "commentType", nullable=true, description="Optional comment type: PRE, EOL, PLATE, POST or REPEATABLE. Overrides disassemblyComment.") CommentType commentType,
 		@Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable = true) String programName
 	) {
 		Program program = getProgramByName(programName);
 		if (program == null)
 			return "Program not found";
 
-		if (address == null || address.isEmpty() || comment == null)
-			return "address and comment must be provided";
+		if (address == null || address.isEmpty())
+			return "address must be provided";
 
 		AtomicBoolean success = new AtomicBoolean(false);
 		disassemblyComment = (disassemblyComment != null) ? disassemblyComment : false;
-		String transactionName = disassemblyComment ? "Set disassembly comment" : "Set decompiler comment";
-		CommentType commentType = disassemblyComment ? CommentType.EOL : CommentType.PRE; // Default to PRE for decompiler comments
+		CommentType type = (commentType != null)
+			? commentType
+			: disassemblyComment ? CommentType.EOL : CommentType.PRE; // Default to PRE for decompiler comments
+
+		// an empty comment removes the comment
+		final String text = (comment == null || comment.isEmpty()) ? null : comment;
+		String transactionName = (text == null ? "Remove " : "Set ") + type.name().toLowerCase() + " comment";
 
 		try {
 			SwingUtilities.invokeAndWait(() -> {
 				int tx = program.startTransaction(transactionName);
 				try {
 					Address addr = AddressUtils.parseAddress(program, address);
-					program.getListing().setComment(addr, commentType, comment);
+					program.getListing().setComment(addr, type, text);
 					success.set(true);
 				} catch (Exception e) {
 					Msg.error(SetComment.class, "Error setting " + transactionName.toLowerCase(), e);
@@ -96,8 +103,8 @@ public final class SetComment extends Handler {
 			Msg.error(SetComment.class, "Failed to execute " + transactionName.toLowerCase() + " on Swing thread", e);
 		}
 
-		return success.get()
-			? "Comment set successfully"
-			: "Failed to set comment";
+		if (!success.get())
+			return "Failed to set comment";
+		return text == null ? "Comment removed" : "Comment set successfully";
 	}
 }

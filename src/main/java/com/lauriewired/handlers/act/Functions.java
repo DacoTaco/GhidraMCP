@@ -43,15 +43,21 @@ public final class Functions extends Handler {
      *
      * @param programName the program to work with
      * @param address the entry point of the new function
-     * @param name optional function name, may be qualified like "A::name"
+     * @param name optional function name, without namespace
+     * @param namespacePath optional namespace path, e.g. "A::B"
      * @throws Exception when the function could not be created
      */
     @HttpRoute(method = HttpMethod.POST, path = "/createFunction")
     @McpTool(name = "create_function", description = "Create a function at an address, disassembling it first if needed.")
     public void CreateFunction(@Param(name = "program", description = "optional program name to work with. normally kept empty to select active program.", nullable = true) String programName,
             @Param(name = "address", description = "Entry point, in hex.") String address,
-            @Param(name = "name", nullable = true, description = "Function name, 'A::name' puts it in namespace A.") String name)
+            @Param(name = "name", nullable = true, description = "Function name, without namespace.") String name,
+            @Param(name = "namespace", nullable = true, description = "Namespace path, e.g. 'A::B'. Empty = global.") String namespacePath)
             throws Exception {
+        if (name != null && name.contains("::")) {
+            throw new IllegalArgumentException("name must not contain '::', put the namespace in 'namespace'");
+        }
+
         Program program = getProgramByName(programName);
         if (program == null) {
             throw new Exception("Program not found");
@@ -83,8 +89,7 @@ public final class Functions extends Handler {
                     }
 
                     if (name != null && !name.isBlank()) {
-                        String[] parts = NamespacesUtils.SplitQualifiedName(name);
-                        NamespacesUtils.MoveFunction(program, program.getFunctionManager().getFunctionAt(entry), parts[0], parts[1], false);
+                        NamespacesUtils.MoveFunction(program, program.getFunctionManager().getFunctionAt(entry), namespacePath, name, false);
                     }
                     success = true;
                 } catch (Exception e) {
@@ -171,18 +176,17 @@ public final class Functions extends Handler {
      * @param newName the new name
      * @param namespacePath the namespace path, e.g. "A::B". Empty or "global"
      * for the global namespace.
-     * @param asClass create the namespace as a class or convert it to one, and
-     * make the function __thiscall
+     * @param asClass create the namespace as a class or convert it to one
      * @throws Exception when the function was not found or could not be renamed
      */
     @HttpRoute(method = HttpMethod.POST, path = "/renameFunction")
-    @McpTool(name = "rename_function", description = "Rename a function by its current name OR address to a new user-defined name. A name like 'Class::name' moves the function into that namespace.")
+    @McpTool(name = "rename_function", description = "Rename a function by its current name OR address to a new user-defined name, and set its namespace. The name must not contain '::', the namespace goes in 'namespace'.")
     public void RenameFunction(@Param(name = "program", description = "optional program name to work with. normally kept empty to select active program.", nullable = true) String programName,
             @Param(name = "functionName", description = "The name of the function to rename.", nullable = true) String functionName,
             @Param(name = "functionAddress", description = "The address of the function to rename.", nullable = true) String address,
             @Param(name = "newName", description = "The new name for the function.", nullable = false) String newName,
-            @Param(name = "namespace", nullable = true, description = "Namespace path, e.g. 'A::B'. Empty = global.") String namespacePath,
-            @Param(name = "asClass", nullable = true, description = "Make the namespace a class and the function __thiscall.") Boolean asClass) throws Exception {
+            @Param(name = "namespace", nullable = true, description = "Namespace path, e.g. 'A::B'. When no namespace is given, the function is moved to the global namespace.") String namespacePath,
+            @Param(name = "asClass", nullable = true, description = "Make the namespace a class. Does not change the calling convention.") Boolean asClass) throws Exception {
 
         if ((functionName == null || functionName.isEmpty()) && (address == null || address.isEmpty())) {
             throw new IllegalArgumentException("Either functionName or functionAddress must be provided.");

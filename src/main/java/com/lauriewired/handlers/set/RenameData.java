@@ -43,7 +43,7 @@ public final class RenameData extends Handler {
 	 * If the data exists, it updates its name; otherwise, it creates a new label.
 	 *
      * @param addressStr the address as a string
-     * @param newName the new name, may be qualified like "A::name"
+     * @param newName the new name, without namespace
      * @param namespace optional namespace to put the label in
      * @throws Exception when the label could not be renamed
 	 */
@@ -51,18 +51,17 @@ public final class RenameData extends Handler {
     @McpTool(name = "rename_data", description = "Rename a data label at the specified address.")
     public void renameDataAtAddress(@Param(name = "program", description = "optional program name to work with. normally kept empty to select active program.", nullable = true) String programName,
             @Param(name = "address") String addressStr, @Param(name = "newName") String newName,
-            @Param(name = "namespace", nullable = true) String namespacePath) throws Exception {
+            @Param(name = "namespace", nullable = true, description = "Namespace path, e.g. 'A::B'. When no namespace is given, the label is put in the global namespace.") String namespacePath) throws Exception {
+        if (newName.contains("::"))
+            throw new IllegalArgumentException("newName must not contain '::', put the namespace in 'namespace'");
+
 		Program program = getProgramByName(programName);
 		if (program == null)
             throw new Exception("Program not found");
 
         Address addr = AddressUtils.parseAddress(program, addressStr);
-        String[] parts = NamespacesUtils.SplitQualifiedName(newName);
-        if (parts[0] != null && !NamespacesUtils.IsGlobalNamespace(namespacePath))
-            throw new IllegalArgumentException("Give the namespace either in newName or in namespace, not both");
-		
-        final String labelName = parts[1];
-        final String labelNamespace = parts[0] != null ? parts[0] : namespacePath;
+        final String labelName = newName.trim();
+        final String labelNamespace = namespacePath;
 
         final AtomicReference<Exception> error = new AtomicReference<>();
 		try {

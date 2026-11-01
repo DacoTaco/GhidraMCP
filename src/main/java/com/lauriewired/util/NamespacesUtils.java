@@ -9,6 +9,7 @@ import ghidra.program.model.listing.GhidraClass;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.Namespace;
 import ghidra.program.model.symbol.SourceType;
+import ghidra.program.model.symbol.SymbolType;
 
 /**
  * Helpers for namespaces and moving symbols between namespaces.
@@ -23,7 +24,9 @@ public final class NamespacesUtils {
     }
 
     /**
-     * Finds an existing namespace by its full path (e.g. "A::B").
+     * Finds an existing namespace by its full path (e.g. "A::B"). Only
+     * namespace and class symbols are considered, so a function with the same
+     * name is never returned.
      *
      * @return the namespace, or null when it does not exist
      * @throws IllegalArgumentException when the path matches more than one
@@ -34,8 +37,14 @@ public final class NamespacesUtils {
             return program.getGlobalNamespace();
         }
 
-        List<Namespace> matches = NamespaceUtils.getNamespaceByPath(program, null, namespace.trim());
-        if (matches == null || matches.isEmpty()) {
+        List<Namespace> matches = NamespaceUtils.getNamespaceByPath(program, null, namespace.trim())
+            .stream()
+            .filter(ns -> {
+                SymbolType type = ns.getSymbol().getSymbolType();
+                return type == SymbolType.NAMESPACE || type == SymbolType.CLASS;
+            })
+            .toList();
+        if (matches.isEmpty()) {
             return null;
         }
 
@@ -79,13 +88,7 @@ public final class NamespacesUtils {
         return program.getSymbolTable().createClass(parent, path.getName(), SourceType.USER_DEFINED);
     }
 
-    /**
-     * Splits a name like "A::B::name" into its namespace path ("A::B") and name
-     * ("name").
-     *
-     * @return the namespace path (null when the name has none) and the name
-     */
-    public static String[] SplitQualifiedName(String qualifiedName) {
+    private static String[] SplitQualifiedName(String qualifiedName) {
         SymbolPath path = new SymbolPath(qualifiedName.trim());
         return new String[]{path.getParentPath(), path.getName()};
     }
@@ -94,14 +97,9 @@ public final class NamespacesUtils {
      * Moves a function into a namespace and optionally renames it. Must run
      * inside a transaction.
      *
-     * @param name the new name, or null to keep the current one. When the
-     * function still has a flat name containing "::" (e.g.
-     * "TCameraCtrl::setMode") only the last part is kept when moving it into a
-     * non-global namespace.
-     * @param asClass make the namespace a class and give the function a this
-     * parameter (__thiscall)
-     * @throws Exception when the function could not be moved or its calling
-     * convention could not be set
+     * @param name the new name, or null to keep the current one.
+     * @param asClass make the namespace a class.
+     * @throws Exception when the function could not be moved
      */
     public static void MoveFunction(Program program, Function function, String namespacePath, String name, boolean asClass) throws Exception {
         Namespace namespace = GetOrCreateNamespace(program, namespacePath, asClass);
@@ -115,9 +113,5 @@ public final class NamespacesUtils {
         }
 
         function.getSymbol().setNameAndNamespace(newName.trim(), namespace, SourceType.USER_DEFINED);
-
-        if (asClass && !"__thiscall".equals(function.getCallingConventionName())) {
-            function.setCallingConvention("__thiscall");
-        }
     }
 }

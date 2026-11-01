@@ -1,7 +1,11 @@
 package com.lauriewired.handlers.set;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.swing.SwingUtilities;
 
@@ -18,7 +22,8 @@ import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataTypeConflictHandler;
 import ghidra.program.model.data.DataTypeManager;
-import ghidra.program.model.listing.CommentType;
+import ghidra.program.model.lang.CompilerSpec;
+import ghidra.program.model.lang.PrototypeModel;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.SourceType;
@@ -87,7 +92,7 @@ public final class SetFunctionPrototype extends Handler {
 	 * @return PrototypeResult indicating success or failure with error message
 	 */
 	@HttpRoute(method=HttpMethod.POST, path="/set_function_prototype")
-	@McpTool(name="set_function_prototype", description="Set a function's prototype.")
+	@McpTool(name="set_function_prototype", description="Set a function's prototype, e.g. 'void __thiscall setMode(int mode)'. A calling convention in the prototype is applied, otherwise current is kept")
 	public PrototypeResult setFunctionPrototype(@Param(name="function_address") String functionAddrStr, @Param(name="prototype") String prototype, 
 												@Param(name="program", description="optional program name to work with. normally kept empty to select active program.", nullable=true) String programName) {
 		// Input validation
@@ -141,11 +146,8 @@ public final class SetFunctionPrototype extends Handler {
 
 			Msg.info(this, "Setting prototype for function " + func.getName() + ": " + prototype);
 
-			// Store original prototype as a comment for reference
-			addPrototypeComment(program, func, prototype);
-
 			// Use ApplyFunctionSignatureCmd to parse and apply the signature
-			parseFunctionSignatureAndApply(program, addr, prototype, success, errorMessage);
+			parseFunctionSignatureAndApply(program, func, prototype, success, errorMessage);
 
 		} catch (Exception e) {
 			String msg = "Error setting function prototype: " + e.getMessage();
@@ -155,35 +157,16 @@ public final class SetFunctionPrototype extends Handler {
 	}
 
 	/**
-	 * Add a comment to the function indicating the prototype being set
-	 *
-	 * @param program   The current program
-	 * @param func      The function to add the comment to
-	 * @param prototype The prototype string being set
-	 */
-	private void addPrototypeComment(Program program, Function func, String prototype) {
-		int txComment = program.startTransaction("Add prototype comment");
-		try {
-			program.getListing().setComment(
-					func.getEntryPoint(),
-					CommentType.PLATE,
-					"Setting prototype: " + prototype);
-		} finally {
-			program.endTransaction(txComment, true);
-		}
-	}
-
-	/**
 	 * Parse the function signature from the prototype string and apply it to the
 	 * function
 	 *
 	 * @param program      The current program
-	 * @param addr         The address of the function
+	 * @param func         The function to apply the signature to
 	 * @param prototype    The prototype string to set
 	 * @param success      Atomic boolean to indicate success
 	 * @param errorMessage StringBuilder to collect error messages
 	 */
-	private void parseFunctionSignatureAndApply(Program program, Address addr, String prototype,
+	private void parseFunctionSignatureAndApply(Program program, Function func, String prototype,
 			AtomicBoolean success, StringBuilder errorMessage) {
 		// Use ApplyFunctionSignatureCmd to parse and apply the signature
 		int txProto = program.startTransaction("Set function prototype");
@@ -199,8 +182,14 @@ public final class SetFunctionPrototype extends Handler {
 			ghidra.app.util.parser.FunctionSignatureParser parser = new ghidra.app.util.parser.FunctionSignatureParser(
 					dtm, dtms);
 
+			// The parser does not understand calling conventions, so take it out of the text and apply it separately
+			String callingConvention = findCallingConvention(program, prototype);
+			String signatureText = callingConvention == null
+					? prototype
+					: prototype.replaceFirst("(?<![\\w])" + Pattern.quote(callingConvention) + "(?![\\w])", " ");
+
 			// Parse the prototype into a function signature
-			ghidra.program.model.data.FunctionDefinitionDataType sig = parser.parse(null, prototype);
+			ghidra.program.model.data.FunctionDefinitionDataType sig = parser.parse(null, signatureText);
 
 			if (sig == null) {
 				String msg = "Failed to parse function prototype";
@@ -211,12 +200,15 @@ public final class SetFunctionPrototype extends Handler {
 
 			// Create and apply the command
 			ghidra.app.cmd.function.ApplyFunctionSignatureCmd cmd = new ghidra.app.cmd.function.ApplyFunctionSignatureCmd(
-					addr, sig, SourceType.USER_DEFINED, false, false, DataTypeConflictHandler.DEFAULT_HANDLER, FunctionRenameOption.RENAME);
+					func.getEntryPoint(), sig, SourceType.USER_DEFINED, false, false, DataTypeConflictHandler.DEFAULT_HANDLER, FunctionRenameOption.RENAME);
 
 			// Apply the command to the program
 			boolean cmdResult = cmd.applyTo(program, new ConsoleTaskMonitor());
 
 			if (cmdResult) {
+				if (callingConvention != null && !callingConvention.equals(func.getCallingConventionName())) {
+					func.setCallingConvention(callingConvention);
+				}
 				success.set(true);
 				Msg.info(this, "Successfully applied function signature");
 			} else {
@@ -231,5 +223,27 @@ public final class SetFunctionPrototype extends Handler {
 		} finally {
 			program.endTransaction(txProto, success.get());
 		}
+	}
+
+	/**
+	 * Finds a calling convention name (e.g. __stdcall, __thiscall) in the
+	 * prototype text.
+	 *
+	 * @return the calling convention, or null when the prototype has none
+	 */
+	private static String findCallingConvention(Program program, String prototype) {
+		Set<String> known = new LinkedHashSet<>(program.getFunctionManager().getCallingConventionNames());
+		for (PrototypeModel model : program.getCompilerSpec().getCallingConventions()) {
+			known.add(model.getName());
+		}
+		known.add(CompilerSpec.CALLING_CONVENTION_thiscall);
+
+		for (String name : known) {
+			Matcher matcher = Pattern.compile("(?<![\\w])" + Pattern.quote(name) + "(?![\\w])").matcher(prototype);
+			if (matcher.find()) {
+				return name;
+			}
+		}
+		return null;
 	}
 }
