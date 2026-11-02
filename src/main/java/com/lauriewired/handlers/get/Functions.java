@@ -6,6 +6,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
 
 import org.eclipse.jetty.http.HttpMethod;
@@ -32,6 +33,35 @@ public final class Functions extends Handler {
     public Functions(PluginTool tool) {
         super(tool);
     }
+
+	private static Pattern NamePattern(String searchTerm) {
+		if (searchTerm.length() > 2 && searchTerm.startsWith("/") && searchTerm.endsWith("/"))
+			return Pattern.compile(searchTerm.substring(1, searchTerm.length() - 1), Pattern.CASE_INSENSITIVE);
+
+		if (searchTerm.matches(".*[\\^$.+()\\[\\]{}|\\\\].*")) {
+			try {
+				return Pattern.compile(searchTerm, Pattern.CASE_INSENSITIVE);
+			} catch (PatternSyntaxException e) {
+				// not a regex after all, e.g. "operator[]"
+			}
+		}
+
+		if (searchTerm.indexOf('*') < 0 && searchTerm.indexOf('?') < 0)
+			return Pattern.compile(Pattern.quote(searchTerm), Pattern.CASE_INSENSITIVE);
+
+		StringBuilder wildcard = new StringBuilder("^");
+		for (char c : searchTerm.toCharArray()) {
+			switch (c) {
+				case '*' ->
+					wildcard.append(".*");
+				case '?' ->
+					wildcard.append('.');
+				default ->
+					wildcard.append(Pattern.quote(String.valueOf(c)));
+			}
+		}
+		return Pattern.compile(wildcard.append('$').toString(), Pattern.CASE_INSENSITIVE);
+	}
 
 	/**
 	 * Searches for functions in the current program by name.
@@ -150,32 +180,7 @@ public final class Functions extends Handler {
 		}
 		else
 		{
-            // case insensitive name filter: "/regex/", a wildcard pattern with '*' and '?' that must match
-            // the whole name, or plain text that may match anywhere in the name
-            Pattern pattern = null;
-            if (searchTerm != null && !searchTerm.isEmpty()) {
-                String regex;
-                if (searchTerm.length() > 2 && searchTerm.startsWith("/") && searchTerm.endsWith("/")) {
-                    regex = searchTerm.substring(1, searchTerm.length() - 1);
-                } else if (searchTerm.indexOf('*') < 0 && searchTerm.indexOf('?') < 0) {
-                    regex = Pattern.quote(searchTerm);
-                } else {
-                    StringBuilder wildcard = new StringBuilder("^");
-                    for (char c : searchTerm.toCharArray()) {
-                        switch (c) {
-                            case '*' ->
-                                wildcard.append(".*");
-                            case '?' ->
-                                wildcard.append('.');
-                            default ->
-                                wildcard.append(Pattern.quote(String.valueOf(c)));
-                        }
-                    }
-                    regex = wildcard.append('$').toString();
-                }
-                // an invalid regex throws PatternSyntaxException, an IllegalArgumentException
-                pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
-            }
+            Pattern pattern = (searchTerm == null || searchTerm.isEmpty()) ? null : NamePattern(searchTerm);
 
             boolean filterNamespace = namespace != null && !namespace.isBlank();
             List<String> requiredTags = (tags == null || tags.length == 0) ? null : Arrays.asList(tags);
