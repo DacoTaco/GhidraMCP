@@ -13,27 +13,28 @@ import com.lauriewired.http.HttpRoute;
 import com.lauriewired.mcp.McpTool;
 import static com.lauriewired.util.GhidraUtils.resolveDataType;
 import com.lauriewired.util.StructUtils.StructMember;
+import com.lauriewired.util.StructUtils;
 
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.data.CategoryPath;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeConflictHandler;
 import ghidra.program.model.data.DataTypeManager;
+import ghidra.program.model.data.Structure;
 import ghidra.program.model.data.StructureDataType;
 import ghidra.program.model.listing.Program;
 
 /**
- * Handler for creating a new struct in Ghidra.
- * Expects parameters: name, category (optional), size (optional), members (optional JSON array).
+ * Handler for creating structures and adding members to them.
  * Members should be in the format: [{"name": "member1", "type": "int", "offset": 0, "comment": "Member 1"}, ...]
  */
-public final class CreateStruct extends Handler {
+public final class Structs extends Handler {
 	/**
-	 * Constructs a new CreateStruct handler.
+	 * Constructs a new Structs handler.
 	 *
 	 * @param tool The PluginTool instance to interact with Ghidra.
 	 */
-	public CreateStruct(PluginTool tool) {
+	public Structs(PluginTool tool) {
 		super(tool);
 	}
 
@@ -49,7 +50,7 @@ public final class CreateStruct extends Handler {
 	 */
 	@HttpRoute(method=HttpMethod.POST, path = "/create_struct")
 	@McpTool(name = "create_struct", description = "Create a new structure.")
-	public String createStruct(@Param(name = "name", description = "The name of the new structure.") String name, @Param(name = "category", nullable = true, description = "The category path for the structure (e.g., /my_structs). Defaults to root.") String category,
+	public String CreateStruct(@Param(name = "name", description = "The name of the new structure.") String name, @Param(name = "category", nullable = true, description = "The category path for the structure (e.g., /my_structs). Defaults to root.") String category,
 							   @Param(name = "size", nullable = true, description = "The initial size of the structure.") Integer structSize, @Param(name = "members", nullable = true, description = "List of member dicts with 'name', 'type', and optionally 'offset' and 'comment'. Pointers use asterisk, e.g. void*, int*.") StructMember[] members,
 							   @Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable = true) String programName) {
 		Program program = getProgramByName(programName);
@@ -89,12 +90,7 @@ public final class CreateStruct extends Handler {
 								break;
 							}
 
-							if (member.offset != -1) {
-								newStruct.insertAtOffset((int) member.offset, memberDt, -1, member.name,
-										member.comment);
-							} else {
-								newStruct.add(memberDt, member.name, member.comment);
-							}
+							StructUtils.PlaceMember(newStruct, member, memberDt);
 							membersAdded++;
 						}
 						responseBuilder.append("\nAdded ").append(membersAdded).append(" members.");
@@ -110,6 +106,74 @@ public final class CreateStruct extends Handler {
 			});
 		} catch (InterruptedException | InvocationTargetException e) {
 			return "Error: Failed to execute create struct on Swing thread: " + e.getMessage();
+		}
+		return result.get();
+	}
+
+	/**
+	 * Adds members to a structure in the current Ghidra program.
+	 *
+	 * @param programName The name of the program containing the structure.
+	 * @param structName The name of the structure to modify.
+	 * @param category   The category path where the structure is located (optional).
+	 * @param membersJson JSON array of members to add.
+	 * @return A message indicating success or failure.
+	 */
+	@HttpRoute(method=HttpMethod.POST, path="/add_struct_members")
+	@McpTool(name = "add_struct_members", description = "Add members to an existing structure.")
+	public String AddStructMembers(@Param(name="program", description="optional program name to work with. normally kept empty to select active program.", nullable=true) String programName, 
+								   @Param(name="struct_name", description="The name of the structure to modify.") String structName, 
+	                               @Param(name="category", nullable=true, description="The category path for the structure. Defaults to root.") String category, 
+								   @Param(name="members", description="List of member dicts with 'name', 'type', and optionally 'offset' and 'comment'. Type should be a builtin C type or Ghidra struct name. If offset is given, it replaces the existing members at that offset.") StructMember[] members) {
+		Program program = getProgramByName(programName);
+		if (program == null)
+			return "No program loaded";
+
+		final AtomicReference<String> result = new AtomicReference<>();
+		try {
+			SwingUtilities.invokeAndWait(() -> {
+				int txId = program.startTransaction("Add Struct Member");
+				boolean success = false;
+				try {
+					DataTypeManager dtm = program.getDataTypeManager();
+					CategoryPath path = new CategoryPath(category == null ? "/" : category);
+					DataType dt = dtm.getDataType(path, structName);
+
+					if (dt == null || !(dt instanceof Structure)) {
+						result.set("Error: Struct " + structName + " not found in category " + path);
+						return;
+					}
+					Structure struct = (Structure) dt;
+
+					StringBuilder responseBuilder = new StringBuilder();
+
+					if (members != null) {
+						int membersAdded = 0;
+						for (StructMember member : members) {
+							DataType memberDt = resolveDataType(tool, program, dtm, member.type);
+							if (memberDt == null) {
+								responseBuilder.append("\nError: Could not resolve data type '").append(member.type)
+										.append("' for member '").append(member.name)
+										.append("'. Aborting further member creation.");
+								break;
+							}
+
+							StructUtils.PlaceMember(struct, member, memberDt);
+							membersAdded++;
+						}
+						responseBuilder.append("\nAdded ").append(membersAdded).append(" members.");
+						result.set(responseBuilder.toString());
+						success = membersAdded > 0;
+					}
+
+				} catch (Exception e) {
+					result.set("Error: Failed to add member to struct: " + e.getMessage());
+				} finally {
+					program.endTransaction(txId, success);
+				}
+			});
+		} catch (InterruptedException | InvocationTargetException e) {
+			return "Error: Failed to execute add struct member on Swing thread: " + e.getMessage();
 		}
 		return result.get();
 	}
