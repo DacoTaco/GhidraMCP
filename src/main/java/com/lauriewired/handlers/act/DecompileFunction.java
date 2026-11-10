@@ -1,5 +1,10 @@
 package com.lauriewired.handlers.act;
 
+import static com.lauriewired.util.ParseUtils.paginateList;
+
+import java.util.Arrays;
+import java.util.List;
+
 import org.eclipse.jetty.http.HttpMethod;
 
 import com.lauriewired.endpoints.Param;
@@ -46,7 +51,7 @@ public final class DecompileFunction extends Handler {
 	@HttpRoute(method=HttpMethod.POST, path="/decompile")
 	public String DecompileFunctionByName(@Param(name="name", location=ParamLocation.Body) String name, 
 								   		  @Param(name="program", description="optional program name to work with. normally kept empty to select active program.", nullable=true) String programName) {
-		return DecompileFunction(name, null, programName);
+		return DecompileFunction(name, null, null, null, programName);
 	}
 
 	/**
@@ -55,13 +60,17 @@ public final class DecompileFunction extends Handler {
 	 * 
 	 * @param name The name of the function to decompile.
 	 * @param addressStr the address of the function to decompile
+	 * @param offset the number of lines to skip
+	 * @param limit the maximum number of lines to return
 	 * @return The decompiled C pseudocode or an error message if the function is
 	 *         not found.
 	 */
 	@McpTool(name = "decompile_function", description = "Decompile a function based on its name or address and return the decompiled C code.")
 	@HttpRoute(method=HttpMethod.GET, path="/decompile_function")
 	public String DecompileFunction(@Param(name="name", description="name of the function", nullable=true) String name,
-									@Param(name="address", description="address of the function", nullable=true) String addressStr, 
+									@Param(name="address", description="address of the function", nullable=true) String addressStr,
+									@Param(name="offset", description="number of lines to skip", nullable=true) Integer offset,
+									@Param(name="limit", description="maximum number of lines to return", nullable=true) Integer limit,
 									@Param(name="program", description="optional program name to work with. normally kept empty to select active program.", nullable=true) String programName) {
 		if((name == null || name.isEmpty()) && (addressStr == null || addressStr.isEmpty()))
 			return "Either function name or address must be provided";
@@ -96,10 +105,14 @@ public final class DecompileFunction extends Handler {
 		decomp.setOptions(options);
 		decomp.openProgram(program);
 		DecompileResults result = decomp.decompileFunction(function, 30, new ConsoleTaskMonitor());
-		if (result != null && result.decompileCompleted()) {
-			return result.getDecompiledFunction().getC();
-		} else {
+		if (result == null || !result.decompileCompleted())
 			return "Decompilation failed";
-		}
+
+		String code = result.getDecompiledFunction().getC();
+		if (offset == null && limit == null)
+			return code;
+
+		List<String> lines = Arrays.asList(code.split("\\r?\\n"));
+		return String.join("\n", paginateList(lines, offset == null ? 0 : offset, limit == null ? lines.size() : limit));
 	}
 }
