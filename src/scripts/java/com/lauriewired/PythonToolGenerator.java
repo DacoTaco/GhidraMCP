@@ -92,12 +92,18 @@ public final class PythonToolGenerator {
             .append(tool.name())
             .append("(");
 
+        // python requires parameters with a default to come after those without one
+        Stream<ParamInformation> requiredFirst = required.stream().filter(p -> requiredDefaultValue(p.name()) == null);
+        Stream<ParamInformation> requiredWithDefault = required.stream().filter(p -> requiredDefaultValue(p.name()) != null);
+
         sb.append(
-            Stream.concat(required.stream(), optional.stream())
+            Stream.of(requiredFirst, requiredWithDefault, optional.stream())
+                .flatMap(stream -> stream)
                 .map(p -> {
                     String arg = p.name() + ": " + javaToPythonType(p.type());
-                    if (p.nullable()) {
-                        arg += " = " + defaultValue(p.name(), p.type());
+                    String value = p.nullable() ? defaultValue(p.name(), p.type()) : requiredDefaultValue(p.name());
+                    if (value != null) {
+                        arg += " = " + value;
                     }
                     return arg;
                 })
@@ -186,11 +192,20 @@ public final class PythonToolGenerator {
         return "str";
     }
 
+    /**
+     * Returns the Python default literal for a non-nullable parameter, or null if
+     * the caller must always provide it. Nullable parameters default to None so
+     * the server applies its own default.
+     */
+    private String requiredDefaultValue(String paramName) {
+        if ("offset".equals(paramName)) return "0";
+        if ("limit".equals(paramName)) return "100";
+        return null;
+    }
+
     /** Returns the Python default literal for a nullable parameter. */
     private String defaultValue(String paramName, Class<?> type) {
         if ("program".equals(paramName)) return "\"\"";
-        if ("offset".equals(paramName)) return "0";
-        if ("limit".equals(paramName)) return "100";
         if (type == boolean.class || type == Boolean.class) return "False";
         return "None";
     }
