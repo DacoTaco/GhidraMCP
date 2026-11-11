@@ -22,89 +22,90 @@ import ghidra.program.model.data.Structure;
 import ghidra.program.model.listing.Program;
 
 /**
- * Handler for adding members to a structure in Ghidra.
- * Expects a POST request with parameters:
- * - struct_name: Name of the structure to modify
- * - category: Category path where the structure is located (optional)
- * - members: JSON array of members to add, each with fields:
- *   - type: Data type of the member
- *   - name: Name of the member
- *   - comment: Comment for the member (optional)
- *   - offset: Offset in bytes (optional, -1 for next available position)
+ * Handler for adding members to a structure in Ghidra. Expects a POST request
+ * with parameters: - struct_name: Name of the structure to modify - category:
+ * Category path where the structure is located (optional) - members: JSON array
+ * of members to add, each with fields: - type: Data type of the member - name:
+ * Name of the member - comment: Comment for the member (optional) - offset:
+ * Offset in bytes (optional, -1 for next available position)
  */
 public final class AddStructMembers extends Handler {
-	
-	public AddStructMembers(PluginTool tool) {
+
+    public AddStructMembers(PluginTool tool) {
         super(tool);
     }
 
-	/**
-	 * Adds members to a structure in the current Ghidra program.
-	 *
-	 * @param programName The name of the program containing the structure.
-	 * @param structName The name of the structure to modify.
-	 * @param category   The category path where the structure is located (optional).
-	 * @param membersJson JSON array of members to add.
-	 * @return A message indicating success or failure.
-	 */
-	@HttpRoute(method=HttpMethod.POST, path="/add_struct_members")
-	@McpTool(name = "add_struct_members", description = "Add members to an existing structure.")
-	public String addStructMembers(@Param(name="program", description="optional program name to work with. normally kept empty to select active program.", nullable=true) String programName, @Param(name="struct_name", description="The name of the structure to modify.") String structName, 
-	                               @Param(name="category", nullable=true, description="The category path for the structure. Defaults to root.") String category, @Param(name="members", description="List of member dicts with 'name', 'type', and optionally 'offset' and 'comment'. Type should be a builtin C type or Ghidra struct name.") StructMember[] members) {
-		Program program = getProgramByName(programName);
-		if (program == null)
-			return "No program loaded";
+    /**
+     * Adds members to a structure in the current Ghidra program.
+     *
+     * @param programName The name of the program containing the structure.
+     * @param structName The name of the structure to modify.
+     * @param category The category path where the structure is located
+     * (optional).
+     * @param membersJson JSON array of members to add.
+     * @return A message indicating success or failure.
+     */
+    @HttpRoute(method = HttpMethod.POST, path = "/add_struct_members")
+    @McpTool(name = "add_struct_members", description = "Add members to an existing structure.")
+    public String addStructMembers(@Param(name = "program", description = "optional program name to work with. normally kept empty to select active program.", nullable = true) String programName,
+            @Param(name = "struct_name", description = "The name of the structure to modify.") String structName,
+            @Param(name = "category", nullable = true, description = "The category path for the structure. Defaults to root.") String category,
+            @Param(name = "members", description = "List of member dicts with 'name', 'type', and optionally 'offset' and 'comment'. Type should be a builtin C type or Ghidra struct name. if offset is given it replaces the existing members if they exist") StructMember[] members) {
+        Program program = getProgramByName(programName);
+        if (program == null) {
+            return "No program loaded";
+        }
 
-		final AtomicReference<String> result = new AtomicReference<>();
-		try {
-			SwingUtilities.invokeAndWait(() -> {
-				int txId = program.startTransaction("Add Struct Member");
-				boolean success = false;
-				try {
-					DataTypeManager dtm = program.getDataTypeManager();
-					CategoryPath path = new CategoryPath(category == null ? "/" : category);
-					DataType dt = dtm.getDataType(path, structName);
+        final AtomicReference<String> result = new AtomicReference<>();
+        try {
+            SwingUtilities.invokeAndWait(() -> {
+                int txId = program.startTransaction("Add Struct Member");
+                boolean success = false;
+                try {
+                    DataTypeManager dtm = program.getDataTypeManager();
+                    CategoryPath path = new CategoryPath(category == null ? "/" : category);
+                    DataType dt = dtm.getDataType(path, structName);
 
-					if (dt == null || !(dt instanceof Structure)) {
-						result.set("Error: Struct " + structName + " not found in category " + path);
-						return;
-					}
-					Structure struct = (Structure) dt;
+                    if (dt == null || !(dt instanceof Structure)) {
+                        result.set("Error: Struct " + structName + " not found in category " + path);
+                        return;
+                    }
+                    Structure struct = (Structure) dt;
 
-					StringBuilder responseBuilder = new StringBuilder();
+                    StringBuilder responseBuilder = new StringBuilder();
 
-					if (members != null) {
-						int membersAdded = 0;
-						for (StructMember member : members) {
-							DataType memberDt = resolveDataType(tool, program, dtm, member.type);
-							if (memberDt == null) {
-								responseBuilder.append("\nError: Could not resolve data type '").append(member.type)
-										.append("' for member '").append(member.name)
-										.append("'. Aborting further member creation.");
-								break;
-							}
+                    if (members != null) {
+                        int membersAdded = 0;
+                        for (StructMember member : members) {
+                            DataType memberDt = resolveDataType(tool, program, dtm, member.type);
+                            if (memberDt == null) {
+                                responseBuilder.append("\nError: Could not resolve data type '").append(member.type)
+                                        .append("' for member '").append(member.name)
+                                        .append("'. Aborting further member creation.");
+                                break;
+                            }
 
-							if (member.offset != -1) {
-								struct.insertAtOffset((int) member.offset, memberDt, -1, member.name, member.comment);
-							} else {
-								struct.add(memberDt, member.name, member.comment);
-							}
-							membersAdded++;
-						}
-						responseBuilder.append("\nAdded ").append(membersAdded).append(" members.");
-						result.set(responseBuilder.toString());
-						success = membersAdded > 0;
-					}
+                            if (member.offset != -1) {
+                                struct.replaceAtOffset((int) member.offset, memberDt, -1, member.name, member.comment);
+                            } else {
+                                struct.add(memberDt, member.name, member.comment);
+                            }
+                            membersAdded++;
+                        }
+                        responseBuilder.append("\nAdded ").append(membersAdded).append(" members.");
+                        result.set(responseBuilder.toString());
+                        success = membersAdded > 0;
+                    }
 
-				} catch (Exception e) {
-					result.set("Error: Failed to add member to struct: " + e.getMessage());
-				} finally {
-					program.endTransaction(txId, success);
-				}
-			});
-		} catch (InterruptedException | InvocationTargetException e) {
-			return "Error: Failed to execute add struct member on Swing thread: " + e.getMessage();
-		}
-		return result.get();
-	}
+                } catch (Exception e) {
+                    result.set("Error: Failed to add member to struct: " + e.getMessage());
+                } finally {
+                    program.endTransaction(txId, success);
+                }
+            });
+        } catch (InterruptedException | InvocationTargetException e) {
+            return "Error: Failed to execute add struct member on Swing thread: " + e.getMessage();
+        }
+        return result.get();
+    }
 }
