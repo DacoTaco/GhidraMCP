@@ -1,10 +1,6 @@
 package com.lauriewired.handlers.set;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.Iterator;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import javax.swing.SwingUtilities;
 
 import org.eclipse.jetty.http.HttpMethod;
 
@@ -13,6 +9,7 @@ import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
 import com.lauriewired.mcp.McpTool;
 import com.lauriewired.util.AddressUtils;
+import com.lauriewired.util.GhidraUtils;
 import static com.lauriewired.util.GhidraUtils.resolveDataType;
 
 import ghidra.app.decompiler.DecompInterface;
@@ -52,7 +49,7 @@ public final class SetLocalVariableType extends Handler {
     @McpTool(name = "set_local_variable_type", description = "Set a local variable's type.")
     public String handleRequest(@Param(name = "function_address") String functionAddress, @Param(name = "variable_name") String variableName,
             @Param(name = "new_type") String newType,
-            @Param(name = "program", description = "optional program name to work with. normally kept empty to select active program.", nullable = true) String programName) {
+            @Param(name = "program", description = "optional program name to work with. normally kept empty to select active program.", nullable = true) String programName) throws Exception {
         // Capture detailed information about setting the type
         StringBuilder responseMsg = new StringBuilder();
         responseMsg.append("Setting variable type: ").append(variableName)
@@ -80,10 +77,8 @@ public final class SetLocalVariableType extends Handler {
         }
 
         // Try to set the type
-        boolean success = setLocalVariableType(programName, functionAddress, variableName, newType);
-
-        String successMsg = success ? "Variable type set successfully" : "Failed to set variable type";
-        responseMsg.append("\nResult: ").append(successMsg);
+        setLocalVariableType(programName, functionAddress, variableName, newType);
+        responseMsg.append("\nResult: Variable type set successfully");
 
         return responseMsg.toString();
     }
@@ -94,98 +89,81 @@ public final class SetLocalVariableType extends Handler {
      * @param functionAddrStr The address of the function as a string.
      * @param variableName The name of the variable to change.
      * @param newType The new type to set for the variable.
-     * @return true if the type was set successfully, false otherwise.
+     * @throws Exception when the type could not be set
      */
-    private boolean setLocalVariableType(String programName, String functionAddrStr, String variableName, String newType) {
+    private void setLocalVariableType(String programName, String functionAddrStr, String variableName, String newType) throws Exception {
         // Input validation
         Program program = getProgramByName(programName);
         if (program == null) {
-            return false;
+            throw new Exception("No program loaded");
         }
         if (functionAddrStr == null || functionAddrStr.isEmpty()
                 || variableName == null || variableName.isEmpty()
                 || newType == null || newType.isEmpty()) {
-            return false;
+            throw new IllegalArgumentException("function_address, variable_name and new_type are required");
         }
 
-        AtomicBoolean success = new AtomicBoolean(false);
-
-        try {
-            SwingUtilities
-                    .invokeAndWait(() -> applyVariableType(program, functionAddrStr, variableName, newType, success));
-        } catch (InterruptedException | InvocationTargetException e) {
-            Msg.error(this, "Failed to execute set variable type on Swing thread", e);
-        }
-
-        return success.get();
+        applyVariableType(program, functionAddrStr, variableName, newType);
     }
 
     /**
      * Applies the new type to the specified variable in the given function.
-     * This method is run on the Swing thread to ensure UI updates are safe.
+     * The decompile runs on this thread, only the database change runs on the
+     * Swing thread inside the transaction.
      *
      * @param program The current program.
      * @param functionAddrStr The address of the function as a string.
      * @param variableName The name of the variable to change.
      * @param newType The new type to set for the variable.
-     * @param success AtomicBoolean to indicate if the operation was successful.
+     * @throws Exception when the type could not be applied
      */
     private void applyVariableType(Program program, String functionAddrStr,
-            String variableName, String newType, AtomicBoolean success) {
-        try {
-            // Find the function
-            Address addr = AddressUtils.parseAddress(program, functionAddrStr);
-            Function func = program.getListing().getFunctionContaining(addr);
+            String variableName, String newType) throws Exception {
+        // Find the function
+        Address addr = AddressUtils.parseAddress(program, functionAddrStr);
+        Function func = program.getListing().getFunctionContaining(addr);
 
-            if (func == null) {
-                Msg.error(this, "Could not find function at address: " + functionAddrStr);
-                return;
-            }
-
-            DecompileResults results = decompileFunction(func, program);
-            if (results == null || !results.decompileCompleted()) {
-                return;
-            }
-
-            ghidra.program.model.pcode.HighFunction highFunction = results.getHighFunction();
-            if (highFunction == null) {
-                Msg.error(this, "No high function available");
-                return;
-            }
-
-            // Find the symbol by name
-            HighSymbol symbol = findSymbolByName(highFunction, variableName);
-            if (symbol == null) {
-                Msg.error(this, "Could not find variable '" + variableName + "' in decompiled function");
-                return;
-            }
-
-            // look for HighVariable associated with the symbol
-            // if the symbol is a decompiler placeholder, it may not have a HighVariable, which is caught further down
-            HighVariable highVar = symbol.getHighVariable();
-            if (highVar != null) {
-                Msg.info(this, "Found high variable for: '" + variableName + "' with current type " + highVar.getDataType().getName());
-            } else {
-                Msg.warn(this, "High symbol found for '" + variableName + "' but no HighVariable is attached");
-            }
-
-            // Find the data type
-            DataTypeManager dtm = program.getDataTypeManager();
-            DataType dataType = resolveDataType(tool, program, dtm, newType);
-
-            if (dataType == null) {
-                Msg.error(this, "Could not resolve data type: " + newType);
-                return;
-            }
-
-            Msg.info(this, "Using data type: " + dataType.getName() + " for variable " + variableName);
-
-            // Apply the type change in a transaction
-            updateVariableType(program, symbol, dataType, success);
-
-        } catch (Exception e) {
-            Msg.error(this, "Error setting variable type: " + e.getMessage());
+        if (func == null) {
+            throw new IllegalArgumentException("Could not find function at address: " + functionAddrStr);
         }
+
+        DecompileResults results = decompileFunction(func, program);
+        if (results == null || !results.decompileCompleted()) {
+            throw new Exception("Could not decompile function at address: " + functionAddrStr);
+        }
+
+        ghidra.program.model.pcode.HighFunction highFunction = results.getHighFunction();
+        if (highFunction == null) {
+            throw new Exception("No high function available");
+        }
+
+        // Find the symbol by name
+        HighSymbol symbol = findSymbolByName(highFunction, variableName);
+        if (symbol == null) {
+            throw new IllegalArgumentException("Could not find variable '" + variableName + "' in decompiled function");
+        }
+
+        // look for HighVariable associated with the symbol
+        // if the symbol is a decompiler placeholder, it may not have a HighVariable, which is caught further down
+        HighVariable highVar = symbol.getHighVariable();
+        if (highVar != null) {
+            Msg.info(this, "Found high variable for: '" + variableName + "' with current type " + highVar.getDataType().getName());
+        } else {
+            Msg.warn(this, "High symbol found for '" + variableName + "' but no HighVariable is attached");
+        }
+
+        // Find the data type
+        DataTypeManager dtm = program.getDataTypeManager();
+        DataType dataType = resolveDataType(tool, program, dtm, newType);
+
+        if (dataType == null) {
+            throw new IllegalArgumentException("Could not resolve data type: " + newType);
+        }
+
+        Msg.info(this, "Using data type: " + dataType.getName() + " for variable " + variableName);
+
+        // Apply the type change in a transaction
+        updateVariableType(program, symbol, dataType);
     }
 
     /**
@@ -284,11 +262,10 @@ public final class SetLocalVariableType extends Handler {
      * @param program The current program.
      * @param symbol The high symbol representing the variable.
      * @param dataType The new data type to set for the variable.
-     * @param success AtomicBoolean to indicate if the operation was successful.
+     * @throws Exception when the type could not be set
      */
-    private void updateVariableType(Program program, HighSymbol symbol, DataType dataType, AtomicBoolean success) {
-        int tx = program.startTransaction("Set variable type");
-        try {
+    private void updateVariableType(Program program, HighSymbol symbol, DataType dataType) throws Exception {
+        GhidraUtils.RunTransaction(program, "Set variable type", () -> {
             // Use HighFunctionDBUtil to update the variable with the new type. it can handle both user defined high variables and decompiler placeholder symbols.
             HighFunctionDBUtil.updateDBVariable(
                     symbol, // The high symbol to modify
@@ -296,13 +273,8 @@ public final class SetLocalVariableType extends Handler {
                     dataType, // The new data type
                     SourceType.USER_DEFINED // Mark as user-defined
             );
-
-            success.set(true);
-            Msg.info(this, "Successfully set variable type using HighFunctionDBUtil");
-        } catch (Exception e) {
-            Msg.error(this, "Error setting variable type: " + e.getMessage());
-        } finally {
-            program.endTransaction(tx, success.get());
-        }
+            return null;
+        });
+        Msg.info(this, "Successfully set variable type using HighFunctionDBUtil");
     }
 }

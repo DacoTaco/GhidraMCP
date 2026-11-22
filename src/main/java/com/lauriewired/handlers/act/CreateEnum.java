@@ -1,10 +1,5 @@
 package com.lauriewired.handlers.act;
 
-import java.lang.reflect.InvocationTargetException;
-import java.util.concurrent.atomic.AtomicReference;
-
-import javax.swing.SwingUtilities;
-
 import org.eclipse.jetty.http.HttpMethod;
 
 import com.lauriewired.endpoints.Param;
@@ -12,6 +7,7 @@ import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
 import com.lauriewired.mcp.McpTool;
 import com.lauriewired.util.EnumUtils.EnumValue;
+import com.lauriewired.util.GhidraUtils;
 
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.data.CategoryPath;
@@ -51,66 +47,50 @@ public final class CreateEnum extends Handler {
 							 @Param(name = "name", description = "The name of the new enum.") String name,
 							 @Param(name = "category", nullable = true, description = "The category path for the enum (e.g., /my_enums). Defaults to root.") String category, 
 							 @Param(name = "size", nullable = true, description = "The size of the enum in bytes (default: 4).") Integer enumSize,
-							 @Param(name = "values", nullable = true, description = "List of value dicts with 'name', 'value', and optionally 'comment'. Example: [{'name': 'VALUE1', 'value': 0}]") EnumValue[] values) {
+							 @Param(name = "values", nullable = true, description = "List of value dicts with 'name', 'value', and optionally 'comment'. Example: [{'name': 'VALUE1', 'value': 0}]") EnumValue[] values) throws Exception {
 		Program program = getProgramByName(programName);
 		if (program == null)
-			return "No program loaded";
+			throw new Exception("No program loaded");
 
 		if(enumSize == null)
 			enumSize = 4;
 
-		final AtomicReference<String> result = new AtomicReference<>();
 		final int size = enumSize;
-		try {
-			SwingUtilities.invokeAndWait(() -> {
-				int txId = program.startTransaction("Create Enum");
-				boolean success = false;
-				try {
-					DataTypeManager dtm = program.getDataTypeManager();
-					CategoryPath path = new CategoryPath(category == null ? "/" : category);
+		return GhidraUtils.RunTransaction(program, "Create Enum", () -> {
+			DataTypeManager dtm = program.getDataTypeManager();
+			CategoryPath path = new CategoryPath(category == null ? "/" : category);
 
-					if (dtm.getDataType(path, name) != null) {
-						result.set("Error: Enum " + name + " already exists in category " + path);
-						return;
+			if (dtm.getDataType(path, name) != null) {
+				throw new IllegalArgumentException("Enum " + name + " already exists in category " + path);
+			}
+			
+			// Create the enum with specified size
+			EnumDataType newEnum = new EnumDataType(path, name, size, dtm);
+
+			StringBuilder responseBuilder = new StringBuilder(
+					"Enum " + name + " created successfully in category " + path + " with size " + size + " bytes");
+
+			if (values != null) {
+				int valuesAdded = 0;
+				for (EnumValue enumValue : values) {
+					if (enumValue.name == null || enumValue.name.isEmpty()) {
+						responseBuilder.append("\nError: Enum value name cannot be empty. Skipping value.");
+						continue;
 					}
-					
-					// Create the enum with specified size
-					EnumDataType newEnum = new EnumDataType(path, name, size, dtm);
 
-					StringBuilder responseBuilder = new StringBuilder(
-							"Enum " + name + " created successfully in category " + path + " with size " + size + " bytes");
-
-					if (values != null) {
-						int valuesAdded = 0;
-						for (EnumValue enumValue : values) {
-							if (enumValue.name == null || enumValue.name.isEmpty()) {
-								responseBuilder.append("\nError: Enum value name cannot be empty. Skipping value.");
-								continue;
-							}
-
-							// Add the enum value with or without comment
-							if (enumValue.comment != null && !enumValue.comment.isEmpty()) {
-								newEnum.add(enumValue.name, (long) enumValue.value, enumValue.comment);
-							} else {
-								newEnum.add(enumValue.name, (long) enumValue.value);
-							}
-							valuesAdded++;
-						}
-						responseBuilder.append("\nAdded ").append(valuesAdded).append(" values.");
+					// Add the enum value with or without comment
+					if (enumValue.comment != null && !enumValue.comment.isEmpty()) {
+						newEnum.add(enumValue.name, (long) enumValue.value, enumValue.comment);
+					} else {
+						newEnum.add(enumValue.name, (long) enumValue.value);
 					}
-					
-					dtm.addDataType(newEnum, DataTypeConflictHandler.DEFAULT_HANDLER);
-					result.set(responseBuilder.toString());
-					success = true;
-				} catch (Exception e) {
-					result.set("Error: Failed to create enum: " + e.getMessage());
-				} finally {
-					program.endTransaction(txId, success);
+					valuesAdded++;
 				}
-			});
-		} catch (InterruptedException | InvocationTargetException e) {
-			return "Error: Failed to execute create enum on Swing thread: " + e.getMessage();
-		}
-		return result.get();
+				responseBuilder.append("\nAdded ").append(valuesAdded).append(" values.");
+			}
+			
+			dtm.addDataType(newEnum, DataTypeConflictHandler.DEFAULT_HANDLER);
+			return responseBuilder.toString();
+		});
 	}
 }

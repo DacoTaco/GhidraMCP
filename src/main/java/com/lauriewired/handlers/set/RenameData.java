@@ -1,10 +1,5 @@
 package com.lauriewired.handlers.set;
 
-import java.lang.reflect.InvocationTargetException;
-import java.util.concurrent.atomic.AtomicReference;
-
-import javax.swing.SwingUtilities;
-
 import org.eclipse.jetty.http.HttpMethod;
 
 import com.lauriewired.endpoints.Param;
@@ -13,6 +8,7 @@ import com.lauriewired.http.HttpRoute;
 import com.lauriewired.mcp.McpTool;
 import com.lauriewired.util.AddressUtils;
 import com.lauriewired.util.NamespacesUtils;
+import com.lauriewired.util.GhidraUtils;
 
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.address.Address;
@@ -63,38 +59,26 @@ public final class RenameData extends Handler {
         final String labelName = newName.trim();
         final String labelNamespace = namespacePath;
 
-        final AtomicReference<Exception> error = new AtomicReference<>();
-		try {
-			SwingUtilities.invokeAndWait(() -> {
-				int tx = program.startTransaction("Rename data");
-                boolean success = false;
-                try {
-                    SymbolTable symbolTable = program.getSymbolTable();
-                    Namespace namespace = NamespacesUtils.GetOrCreateNamespace(program, labelNamespace, false);
-                    Symbol symbol = symbolTable.getPrimarySymbol(addr);
+        GhidraUtils.RunTransaction(program, "Rename data", () -> {
+            try {
+                SymbolTable symbolTable = program.getSymbolTable();
+                Namespace namespace = NamespacesUtils.GetOrCreateNamespace(program, labelNamespace, false);
+                Symbol symbol = symbolTable.getPrimarySymbol(addr);
 
-                    if (symbol != null && symbol.getSymbolType() == SymbolType.FUNCTION)
-					{
-                        error.set(new IllegalArgumentException(addr + " is the entry of function " + symbol.getName(true) + ", use rename_function"));
-                        return;
-                    }
+                if (symbol != null && symbol.getSymbolType() == SymbolType.FUNCTION) {
+                    throw new IllegalArgumentException(addr + " is the entry of function " + symbol.getName(true) + ", use rename_function");
+                }
 
-                    if (symbol == null)
-                        symbolTable.createLabel(addr, labelName, namespace, SourceType.USER_DEFINED);
-                    else
-                        symbol.setNameAndNamespace(labelName, namespace, SourceType.USER_DEFINED);
-                    success = true;
-				} catch (Exception e) {
-                    error.set(new Exception("Failed to rename data: " + e.getMessage(), e));
-				} finally {
-                    program.endTransaction(tx, success);
-				}
-			});
-		} catch (InterruptedException | InvocationTargetException e) {
-            throw new Exception("Failed to execute rename data on Swing thread: " + e.getMessage(), e);
-        }
-
-        if (error.get() != null)
-            throw error.get();
+                if (symbol == null)
+                    symbolTable.createLabel(addr, labelName, namespace, SourceType.USER_DEFINED);
+                else
+                    symbol.setNameAndNamespace(labelName, namespace, SourceType.USER_DEFINED);
+            } catch (IllegalArgumentException e) {
+                throw e;
+            } catch (Exception e) {
+                throw new Exception("Failed to rename data: " + e.getMessage(), e);
+            }
+            return null;
+        });
 	}
 }

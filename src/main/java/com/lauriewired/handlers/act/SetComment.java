@@ -1,10 +1,5 @@
 package com.lauriewired.handlers.act;
 
-import java.lang.reflect.InvocationTargetException;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import javax.swing.SwingUtilities;
-
 import org.eclipse.jetty.http.HttpMethod;
 
 import com.lauriewired.endpoints.Param;
@@ -12,12 +7,12 @@ import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
 import com.lauriewired.mcp.McpTool;
 import com.lauriewired.util.AddressUtils;
+import com.lauriewired.util.GhidraUtils;
 
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.CommentType;
 import ghidra.program.model.listing.Program;
-import ghidra.util.Msg;
 /**
  * Handler for setting a decompiler comment in Ghidra
  * This handler processes HTTP requests to set comments on decompiled code
@@ -38,7 +33,7 @@ public final class SetComment extends Handler {
 		@Param(name = "address") String address,
 		@Param(name = "comment") String comment,
 		@Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable = true) String program
-	) {
+	) throws Exception {
 		return SetComment(address, comment, null, null, program);
 	}
 
@@ -48,7 +43,7 @@ public final class SetComment extends Handler {
 		@Param(name = "address") String address,
 		@Param(name = "comment") String comment,
 		@Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable = true) String program
-	) {
+	) throws Exception {
 		return SetComment(address, comment, true, null, program);
 	}
 
@@ -68,15 +63,14 @@ public final class SetComment extends Handler {
 		@Param(name = "disassemblyComment", nullable=true, description="Optional, only to be set if you know for sure you want to set a disassembly comment") Boolean disassemblyComment,
 		@Param(name = "commentType", nullable=true, description="Optional comment type: PRE, EOL, PLATE, POST or REPEATABLE. Overrides disassemblyComment.") CommentType commentType,
 		@Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable = true) String programName
-	) {
+	) throws Exception {
 		Program program = getProgramByName(programName);
 		if (program == null)
-			return "Program not found";
+			throw new Exception("Program not found");
 
 		if (address == null || address.isEmpty())
-			return "address must be provided";
+			throw new IllegalArgumentException("address must be provided");
 
-		AtomicBoolean success = new AtomicBoolean(false);
 		disassemblyComment = (disassemblyComment != null) ? disassemblyComment : false;
 		CommentType type = (commentType != null)
 			? commentType
@@ -86,25 +80,12 @@ public final class SetComment extends Handler {
 		final String text = (comment == null || comment.isEmpty()) ? null : comment;
 		String transactionName = (text == null ? "Remove " : "Set ") + type.name().toLowerCase() + " comment";
 
-		try {
-			SwingUtilities.invokeAndWait(() -> {
-				int tx = program.startTransaction(transactionName);
-				try {
-					Address addr = AddressUtils.parseAddress(program, address);
-					program.getListing().setComment(addr, type, text);
-					success.set(true);
-				} catch (Exception e) {
-					Msg.error(SetComment.class, "Error setting " + transactionName.toLowerCase(), e);
-				} finally {
-					program.endTransaction(tx, success.get());
-				}
-			});
-		} catch (InterruptedException | InvocationTargetException e) {
-			Msg.error(SetComment.class, "Failed to execute " + transactionName.toLowerCase() + " on Swing thread", e);
-		}
+		GhidraUtils.RunTransaction(program, transactionName, () -> {
+			Address addr = AddressUtils.parseAddress(program, address);
+			program.getListing().setComment(addr, type, text);
+			return null;
+		});
 
-		if (!success.get())
-			return "Failed to set comment";
 		return text == null ? "Comment removed" : "Comment set successfully";
 	}
 }

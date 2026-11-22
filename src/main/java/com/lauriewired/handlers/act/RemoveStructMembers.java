@@ -1,16 +1,12 @@
 package com.lauriewired.handlers.act;
 
-import java.lang.reflect.InvocationTargetException;
-import java.util.concurrent.atomic.AtomicReference;
-
-import javax.swing.SwingUtilities;
-
 import org.eclipse.jetty.http.HttpMethod;
 
 import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
 import com.lauriewired.mcp.McpTool;
+import com.lauriewired.util.GhidraUtils;
 
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.data.CategoryPath;
@@ -49,71 +45,55 @@ public final class RemoveStructMembers extends Handler {
 	@McpTool(name="remove_struct_members", description="Remove members from an existing struct.")
 	public String removeStructMembers(@Param(name="struct_name", description="The name of the struct to modify.") String structName, @Param(name="category", nullable=true, description="The category path for the struct (optional, defaults to root).") String category, 
 									   @Param(name="members", description="List of member names to remove from the struct. Example: ['old_field', 'unused_member']") String[] members, 
-									   @Param(name="program", description="optional program name to work with. normally kept empty to select active program.", nullable=true) String programName) {
+									   @Param(name="program", description="optional program name to work with. normally kept empty to select active program.", nullable=true) String programName) throws Exception {
 		Program program = getProgramByName(programName);
 		if (program == null)
-			return "No program loaded";
+			throw new Exception("No program loaded");
 
-		final AtomicReference<String> result = new AtomicReference<>();
-		try {
-			SwingUtilities.invokeAndWait(() -> {
-				int txId = program.startTransaction("Remove Struct Members");
-				boolean success = false;
-				try {
-					DataTypeManager dtm = program.getDataTypeManager();
-					CategoryPath path = new CategoryPath(category == null ? "/" : category);
-					DataType dt = dtm.getDataType(path, structName);
+		return GhidraUtils.RunTransaction(program, "Remove Struct Members", () -> {
+			DataTypeManager dtm = program.getDataTypeManager();
+			CategoryPath path = new CategoryPath(category == null ? "/" : category);
+			DataType dt = dtm.getDataType(path, structName);
 
-					if (dt == null || !(dt instanceof Structure)) {
-						result.set("Error: Struct " + structName + " not found in category " + path);
-						return;
+			if (dt == null || !(dt instanceof Structure)) {
+				throw new IllegalArgumentException("Struct " + structName + " not found in category " + path);
+			}
+			Structure struct = (Structure) dt;
+
+			StringBuilder responseBuilder = new StringBuilder("Removing members from struct " + structName);
+
+			int membersRemoved = 0;
+			for (String memberName : members) {
+				DataTypeComponent component = null;
+				for (DataTypeComponent comp : struct.getComponents()) {
+					if (comp.getFieldName() != null && comp.getFieldName().equals(memberName)) {
+						component = comp;
+						break;
 					}
-					Structure struct = (Structure) dt;
-
-					StringBuilder responseBuilder = new StringBuilder("Removing members from struct " + structName);
-
-					int membersRemoved = 0;
-					for (String memberName : members) {
-						DataTypeComponent component = null;
-						for (DataTypeComponent comp : struct.getComponents()) {
-							if (comp.getFieldName() != null && comp.getFieldName().equals(memberName)) {
-								component = comp;
-								break;
-							}
-						}
-						
-						if (component == null) {
-							responseBuilder.append("\nWarning: Member '").append(memberName)
-									.append("' not found in struct. Skipping.");
-							continue;
-						}
-
-						int ordinal = component.getOrdinal();
-						struct.delete(ordinal);
-						responseBuilder.append("\nRemoved member '").append(memberName)
-								.append("' (ordinal ").append(ordinal).append(")");
-						membersRemoved++;
-					}
-
-					if (membersRemoved > 0) {
-						responseBuilder.append("\nSuccessfully removed ").append(membersRemoved)
-								.append(" members from struct ").append(structName);
-						success = true;
-					} else {
-						responseBuilder.append("\nNo members were removed from struct ").append(structName);
-					}
-
-					result.set(responseBuilder.toString());
-
-				} catch (Exception e) {
-					result.set("Error: Failed to remove members from struct: " + e.getMessage());
-				} finally {
-					program.endTransaction(txId, success);
 				}
-			});
-		} catch (InterruptedException | InvocationTargetException e) {
-			return "Error: Failed to execute remove struct members on Swing thread: " + e.getMessage();
-		}
-		return result.get();
+				
+				if (component == null) {
+					responseBuilder.append("\nWarning: Member '").append(memberName)
+							.append("' not found in struct. Skipping.");
+					continue;
+				}
+
+				int ordinal = component.getOrdinal();
+				struct.delete(ordinal);
+				responseBuilder.append("\nRemoved member '").append(memberName)
+						.append("' (ordinal ").append(ordinal).append(")");
+				membersRemoved++;
+			}
+
+			if (membersRemoved > 0) {
+				responseBuilder.append("\nSuccessfully removed ").append(membersRemoved)
+						.append(" members from struct ").append(structName);
+			} else {
+				responseBuilder.append("\nNo members were removed from struct ").append(structName);
+				throw new IllegalArgumentException(responseBuilder.toString().trim());
+			}
+
+			return responseBuilder.toString();
+		});
 	}
 }

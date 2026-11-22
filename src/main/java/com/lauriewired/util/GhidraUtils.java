@@ -1,13 +1,18 @@
 package com.lauriewired.util;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+
+import javax.swing.SwingUtilities;
 
 import ghidra.app.services.DataTypeManagerService;
 import ghidra.app.services.ProgramManager;
 import ghidra.framework.model.Project;
 import ghidra.framework.model.ToolManager;
+import ghidra.framework.model.TransactionInfo;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.data.CategoryPath;
 import ghidra.program.model.data.DataType;
@@ -168,5 +173,79 @@ public final class GhidraUtils {
         }
 
         return matches.getFirst();
+    }
+
+    private static final long TRANSACTION_WAIT_MS = 500;
+    private static final long TRANSACTION_POLL_MS = 25;
+
+    @FunctionalInterface
+    public interface TransactionBody<T> {
+
+        T run() throws Exception;
+    }
+
+    /**
+     * Runs the body on the Swing thread inside its own transaction, committed
+     * when the body returns and rolled back when it throws. Never joins an open
+     * transaction, as a failure would roll that one back too: it waits for it
+     * to end and throws when it doesn't. Must be called from a worker thread.
+     *
+     * @return what the body returned
+     * @throws IllegalStateException when another transaction is still open
+     * after waiting
+     * @throws Exception whatever the body threw
+     */
+    public static <T> T RunTransaction(Program program, String name, TransactionBody<T> body) throws Exception {
+        long deadline = System.currentTimeMillis() + TRANSACTION_WAIT_MS;
+        AtomicReference<String> busy = new AtomicReference<>();
+        AtomicReference<T> result = new AtomicReference<>();
+        AtomicReference<Exception> error = new AtomicReference<>();
+
+        while (true) {
+            busy.set(null);
+            try {
+                SwingUtilities.invokeAndWait(() -> {
+                    int tx = program.startTransaction(name);
+                    TransactionInfo info = program.getCurrentTransactionInfo();
+                    // joined an open transaction, ending only our own entry with true leaves it alone
+                    if (info.getOpenSubTransactions().size() != 1) {
+                        busy.set(info.getDescription());
+                        program.endTransaction(tx, true);
+                        return;
+                    }
+
+                    boolean success = false;
+                    try {
+                        result.set(body.run());
+                        success = true;
+                    } catch (Exception e) {
+                        error.set(e);
+                    } finally {
+                        program.endTransaction(tx, success);
+                    }
+                });
+            } catch (InvocationTargetException e) {
+                // invokeAndWait wraps what the Swing task threw, hand back the real exception
+                if (e.getCause() instanceof Exception cause) {
+                    throw cause;
+                }
+                throw e;
+            }
+
+            if (error.get() != null) {
+                throw error.get();
+            }
+
+            if (busy.get() == null) {
+                return result.get();
+            }
+
+            //either bail out or wait some more for a transaction
+            if (System.currentTimeMillis() >= deadline) {
+                throw new IllegalStateException("Program busy: transaction '" + busy.get() + "' is still open after "
+                        + TRANSACTION_WAIT_MS + " ms. '" + name + "' was not started, so it can't merge into it and roll it back. Retry shortly.");
+            }
+            Thread.sleep(TRANSACTION_POLL_MS);
+        }
     }
 }

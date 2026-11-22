@@ -1,10 +1,6 @@
 package com.lauriewired.handlers.set;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.Iterator;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import javax.swing.SwingUtilities;
 
 import org.eclipse.jetty.http.HttpMethod;
 
@@ -12,6 +8,7 @@ import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
 import com.lauriewired.mcp.McpTool;
+import com.lauriewired.util.GhidraUtils;
 
 import ghidra.app.decompiler.DecompInterface;
 import ghidra.app.decompiler.DecompileOptions;
@@ -26,7 +23,6 @@ import ghidra.program.model.pcode.HighFunctionDBUtil;
 import ghidra.program.model.pcode.HighSymbol;
 import ghidra.program.model.pcode.LocalSymbolMap;
 import ghidra.program.model.symbol.SourceType;
-import ghidra.util.Msg;
 import ghidra.util.task.ConsoleTaskMonitor;
 
 /**
@@ -55,10 +51,10 @@ public final class RenameVariable extends Handler {
 	@McpTool(name="rename_variable", description="Rename a local variable within a function.")
 	public String renameVariableInFunction(@Param(name="functionName") String functionName, @Param(name="oldName") String oldVarName, 
 										   @Param(name="newName") String newVarName, 
-										   @Param(name="program", description="optional program name to work with. normally kept empty to select active program.", nullable=true) String programName) {
+										   @Param(name="program", description="optional program name to work with. normally kept empty to select active program.", nullable=true) String programName) throws Exception {
 		Program program = getProgramByName(programName);
 		if (program == null)
-			return "No program loaded";
+			throw new Exception("No program loaded");
 
 		DecompInterface decomp = new DecompInterface();
 		DecompileOptions opts = new DecompileOptions();
@@ -75,22 +71,22 @@ public final class RenameVariable extends Handler {
 		}
 
 		if (func == null) {
-			return "Function not found";
+			throw new IllegalArgumentException("Function not found");
 		}
 
 		DecompileResults result = decomp.decompileFunction(func, 30, new ConsoleTaskMonitor());
 		if (result == null || !result.decompileCompleted()) {
-			return "Decompilation failed";
+			throw new Exception("Decompilation failed");
 		}
 
 		HighFunction highFunction = result.getHighFunction();
 		if (highFunction == null) {
-			return "Decompilation failed (no high function)";
+			throw new Exception("Decompilation failed (no high function)");
 		}
 
 		LocalSymbolMap localSymbolMap = highFunction.getLocalSymbolMap();
 		if (localSymbolMap == null) {
-			return "Decompilation failed (no local symbol map)";
+			throw new Exception("Decompilation failed (no local symbol map)");
 		}
 
 		HighSymbol highSymbol = null;
@@ -103,46 +99,32 @@ public final class RenameVariable extends Handler {
 				highSymbol = symbol;
 			}
 			if (symbolName.equals(newVarName)) {
-				return "Error: A variable with name '" + newVarName + "' already exists in this function";
+				throw new IllegalArgumentException("A variable with name '" + newVarName + "' already exists in this function");
 			}
 		}
 
 		if (highSymbol == null) {
-			return "Variable not found";
+			throw new IllegalArgumentException("Variable not found");
 		}
 
 		boolean commitRequired = checkFullCommit(highSymbol, highFunction);
 
 		final HighSymbol finalHighSymbol = highSymbol;
 		final Function finalFunction = func;
-		AtomicBoolean successFlag = new AtomicBoolean(false);
 
-		try {
-			SwingUtilities.invokeAndWait(() -> {
-				int tx = program.startTransaction("Rename variable");
-				try {
-					if (commitRequired) {
-						HighFunctionDBUtil.commitParamsToDatabase(highFunction, false,
-								HighFunctionDBUtil.ReturnCommitOption.NO_COMMIT, finalFunction.getSignatureSource());
-					}
-					HighFunctionDBUtil.updateDBVariable(
-							finalHighSymbol,
-							newVarName,
-							null,
-							SourceType.USER_DEFINED);
-					successFlag.set(true);
-				} catch (Exception e) {
-					Msg.error(this, "Failed to rename variable", e);
-				} finally {
-					program.endTransaction(tx, true);
-				}
-			});
-		} catch (InterruptedException | InvocationTargetException e) {
-			String errorMsg = "Failed to execute rename on Swing thread: " + e.getMessage();
-			Msg.error(this, errorMsg, e);
-			return errorMsg;
-		}
-		return successFlag.get() ? "Variable renamed" : "Failed to rename variable";
+		GhidraUtils.RunTransaction(program, "Rename variable", () -> {
+			if (commitRequired) {
+				HighFunctionDBUtil.commitParamsToDatabase(highFunction, false,
+						HighFunctionDBUtil.ReturnCommitOption.NO_COMMIT, finalFunction.getSignatureSource());
+			}
+			HighFunctionDBUtil.updateDBVariable(
+					finalHighSymbol,
+					newVarName,
+					null,
+					SourceType.USER_DEFINED);
+			return null;
+		});
+		return "Variable renamed";
 	}
 
 	/**

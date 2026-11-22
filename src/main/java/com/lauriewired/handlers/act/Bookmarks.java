@@ -1,11 +1,7 @@
 package com.lauriewired.handlers.act;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
-
-import javax.swing.SwingUtilities;
 
 import org.eclipse.jetty.http.HttpMethod;
 
@@ -14,6 +10,7 @@ import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
 import com.lauriewired.mcp.McpTool;
 import com.lauriewired.util.AddressUtils;
+import com.lauriewired.util.GhidraUtils;
 
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.address.Address;
@@ -52,28 +49,10 @@ public final class Bookmarks extends Handler {
             throw new IllegalArgumentException("A " + resolvedType + " bookmark already exists at " + address);
         }
 
-        // a Runnable can't throw checked exceptions, so the error is carried out of the Swing thread
-        final AtomicReference<Exception> error = new AtomicReference<>();
-        try {
-            SwingUtilities.invokeAndWait(() -> {
-                int transactionID = currentProgram.startTransaction("Add Bookmark");
-                boolean success = false;
-                try {
-                    bookmarkManager.setBookmark(address, resolvedType, category, comment);
-                    success = true;
-                } catch (Exception e) {
-                    error.set(e);
-                } finally {
-                    currentProgram.endTransaction(transactionID, success);
-                }
-            });
-        } catch (InterruptedException | InvocationTargetException e) {
-            throw new Exception("Failed to execute add bookmark on Swing thread: " + e.getMessage(), e);
-        }
-
-        if (error.get() != null) {
-            throw error.get();
-        }
+        GhidraUtils.RunTransaction(currentProgram, "Add Bookmark", () -> {
+            bookmarkManager.setBookmark(address, resolvedType, category, comment);
+            return null;
+        });
     }
 
     /**
@@ -103,21 +82,11 @@ public final class Bookmarks extends Handler {
             throw new IllegalArgumentException("No matching bookmarks at " + addr);
         }
 
-        try {
-            SwingUtilities.invokeAndWait(() -> {
-                int tx = program.startTransaction("Remove bookmark");
-                boolean success = false;
-                try {
-                    for (Bookmark bookmark : matches) {
-                        bookmarkManager.removeBookmark(bookmark);
-                    }
-                    success = true;
-                } finally {
-                    program.endTransaction(tx, success);
-                }
-            });
-        } catch (InterruptedException | InvocationTargetException e) {
-            throw new Exception("Failed to execute remove bookmark on Swing thread: " + e.getMessage(), e);
-        }
+        GhidraUtils.RunTransaction(program, "Remove bookmark", () -> {
+            for (Bookmark bookmark : matches) {
+                bookmarkManager.removeBookmark(bookmark);
+            }
+            return null;
+        });
     }
 }

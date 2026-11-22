@@ -1,10 +1,5 @@
 package com.lauriewired.handlers.set;
 
-import java.lang.reflect.InvocationTargetException;
-import java.util.concurrent.atomic.AtomicReference;
-
-import javax.swing.SwingUtilities;
-
 import org.eclipse.jetty.http.HttpMethod;
 
 import com.lauriewired.endpoints.Param;
@@ -12,6 +7,7 @@ import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
 import com.lauriewired.mcp.McpTool;
 import com.lauriewired.util.AddressUtils;
+import com.lauriewired.util.GhidraUtils;
 import static com.lauriewired.util.GhidraUtils.resolveDataType;
 
 import ghidra.framework.plugintool.PluginTool;
@@ -52,7 +48,7 @@ public final class SetGlobalDataType extends Handler {
 								@Param(name="data_type", description="The name of the data type to apply (e.g. int, char*, MyStruct).") String dataTypeName, 
 								@Param(name="length", nullable=true, description="Optional length for dynamic data types (-1 to let the type determine).") Integer length,
 							    @Param(name="clear_mode", nullable=true, description="How to handle conflicting data: CHECK_FOR_SPACE (default), CLEAR_SINGLE_DATA, CLEAR_ALL_UNDEFINED_CONFLICT_DATA, CLEAR_ALL_DEFAULT_CONFLICT_DATA, CLEAR_ALL_CONFLICT_DATA.") String clearModeStr, 
-							    @Param(name="program", description="optional program name to work with. normally kept empty to select active program.", nullable=true) String programName){
+							    @Param(name="program", description="optional program name to work with. normally kept empty to select active program.", nullable=true) String programName) throws Exception {
 		length = length == null ? -1 : length;
 		if (clearModeStr == null) clearModeStr = "CHECK_FOR_SPACE";
 
@@ -95,56 +91,41 @@ public final class SetGlobalDataType extends Handler {
 	 * @param clearMode The clearing mode to use when conflicting data exists.
 	 * @return A message indicating success or failure of the operation.
 	 */
-	private String setGlobalDataType(String addressStr, String dataTypeName, int length, ClearDataMode clearMode, String programName) {
+	private String setGlobalDataType(String addressStr, String dataTypeName, int length, ClearDataMode clearMode, String programName) throws Exception {
 		Program program = getProgramByName(programName);
 		if (program == null) {
-			return "No program loaded";
+			throw new Exception("No program loaded");
 		}
 
-		final AtomicReference<String> result = new AtomicReference<>();
-		try {
-			SwingUtilities.invokeAndWait(() -> {
-				int txId = program.startTransaction("Set Global Data Type");
-				boolean success = false;
-				try {
-					// Parse the address
-					Address address = AddressUtils.parseAddress(program, addressStr);
+		return GhidraUtils.RunTransaction(program, "Set Global Data Type", () -> {
+			// Parse the address
+			Address address = AddressUtils.parseAddress(program, addressStr);
 
-					// Resolve the data type
-					DataTypeManager dtm = program.getDataTypeManager();
-					DataType dataType = resolveDataType(tool, program, dtm, dataTypeName);
-					if (dataType == null) {
-						result.set("Error: Could not resolve data type: " + dataTypeName);
-						return;
-					}
+			// Resolve the data type
+			DataTypeManager dtm = program.getDataTypeManager();
+			DataType dataType = resolveDataType(tool, program, dtm, dataTypeName);
+			if (dataType == null) {
+				throw new IllegalArgumentException("Could not resolve data type: " + dataTypeName);
+			}
 
-					Msg.info(this, "Setting data type " + dataType.getName() + " at address " + address);
+			Msg.info(this, "Setting data type " + dataType.getName() + " at address " + address);
 
-					// Create the data using DataUtilities
-					Data newData = DataUtilities.createData(program, address, dataType, length, clearMode);
-					
-					if (newData != null) {
-						result.set("Successfully set data type '" + dataType.getName() + 
-								"' at address " + address + ". Data length: " + newData.getLength() + " bytes.");
-						success = true;
-					} else {
-						result.set("Error: Failed to create data at address " + address);
-					}
+			// Create the data using DataUtilities
+			Data newData;
+			try {
+				newData = DataUtilities.createData(program, address, dataType, length, clearMode);
+			} catch (CodeUnitInsertionException e) {
+				throw new IllegalArgumentException("Could not insert data at address " + addressStr + 
+						" - " + e.getMessage() + ". Try using a different clear_mode.");
+			}
 
-				} catch (CodeUnitInsertionException e) {
-					result.set("Error: Could not insert data at address " + addressStr + 
-							" - " + e.getMessage() + ". Try using a different clear_mode.");
-				} catch (Exception e) {
-					result.set("Error: Failed to set data type: " + e.getMessage());
-					Msg.error(this, "Error setting global data type", e);
-				} finally {
-					program.endTransaction(txId, success);
-				}
-			});
-		} catch (InterruptedException | InvocationTargetException e) {
-			return "Error: Failed to execute set data type on Swing thread: " + e.getMessage();
-		}
-		return result.get();
+			if (newData == null) {
+				throw new Exception("Failed to create data at address " + address);
+			}
+
+			return "Successfully set data type '" + dataType.getName() + 
+					"' at address " + address + ". Data length: " + newData.getLength() + " bytes.";
+		});
 	}
 
 	/**

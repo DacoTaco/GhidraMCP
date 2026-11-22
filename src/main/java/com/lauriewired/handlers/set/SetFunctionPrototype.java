@@ -1,13 +1,10 @@
 package com.lauriewired.handlers.set;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import javax.swing.SwingUtilities;
 
 import org.eclipse.jetty.http.HttpMethod;
 
@@ -16,6 +13,7 @@ import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
 import com.lauriewired.mcp.McpTool;
 import com.lauriewired.util.AddressUtils;
+import com.lauriewired.util.GhidraUtils;
 
 import ghidra.app.cmd.function.FunctionRenameOption;
 import ghidra.framework.plugintool.PluginTool;
@@ -110,12 +108,19 @@ public final class SetFunctionPrototype extends Handler {
 		final AtomicBoolean success = new AtomicBoolean(false);
 
 		try {
-			SwingUtilities.invokeAndWait(
-					() -> applyFunctionPrototype(program, functionAddrStr, prototype, success, errorMessage));
-		} catch (InterruptedException | InvocationTargetException e) {
-			String msg = "Failed to set function prototype on Swing thread: " + e.getMessage();
-			errorMessage.append(msg);
-			Msg.error(this, msg, e);
+			GhidraUtils.RunTransaction(program, "Set function prototype", () -> {
+				applyFunctionPrototype(program, functionAddrStr, prototype, success, errorMessage);
+				if (!success.get()) {
+					// throwing rolls the transaction back
+					throw new Exception(errorMessage.toString());
+				}
+				return null;
+			});
+		} catch (Exception e) {
+			if (errorMessage.length() == 0) {
+				errorMessage.append(e.getMessage());
+			}
+			Msg.error(this, "Failed to set function prototype: " + errorMessage, e);
 		}
 
 		return new PrototypeResult(success.get(), errorMessage.toString());
@@ -169,7 +174,6 @@ public final class SetFunctionPrototype extends Handler {
 	private void parseFunctionSignatureAndApply(Program program, Function func, String prototype,
 			AtomicBoolean success, StringBuilder errorMessage) {
 		// Use ApplyFunctionSignatureCmd to parse and apply the signature
-		int txProto = program.startTransaction("Set function prototype");
 		try {
 			// Get data type manager
 			DataTypeManager dtm = program.getDataTypeManager();
@@ -220,8 +224,6 @@ public final class SetFunctionPrototype extends Handler {
 			String msg = "Error applying function signature: " + e.getMessage();
 			errorMessage.append(msg);
 			Msg.error(this, msg, e);
-		} finally {
-			program.endTransaction(txProto, success.get());
 		}
 	}
 

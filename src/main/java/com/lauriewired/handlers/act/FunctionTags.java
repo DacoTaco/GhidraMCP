@@ -1,10 +1,5 @@
 package com.lauriewired.handlers.act;
 
-import java.lang.reflect.InvocationTargetException;
-import java.util.concurrent.atomic.AtomicReference;
-
-import javax.swing.SwingUtilities;
-
 import org.eclipse.jetty.http.HttpMethod;
 
 import com.lauriewired.endpoints.Param;
@@ -12,6 +7,7 @@ import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
 import com.lauriewired.mcp.McpTool;
 import com.lauriewired.util.AddressUtils;
+import com.lauriewired.util.GhidraUtils;
 
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.listing.Function;
@@ -57,38 +53,20 @@ public final class FunctionTags extends Handler {
             throw new IllegalArgumentException("No function at or containing " + address);
         }
 
-        // a Runnable can't throw checked exceptions, so the error is carried out of the Swing thread
-        final AtomicReference<Exception> error = new AtomicReference<>();
-        try {
-            SwingUtilities.invokeAndWait(() -> {
-                int tx = program.startTransaction(add ? "Add function tags" : "Remove function tags");
-                boolean success = false;
-                try {
-                    for (String tag : tags) {
-                        String name = tag.trim();
-                        if (name.isEmpty()) {
-                            continue;
-                        }
-
-                        if (add) {
-                            function.addTag(name);
-                        } else {
-                            function.removeTag(name);
-                        }
-                    }
-                    success = true;
-                } catch (Exception e) {
-                    error.set(e);
-                } finally {
-                    program.endTransaction(tx, success);
+        GhidraUtils.RunTransaction(program, add ? "Add function tags" : "Remove function tags", () -> {
+            for (String tag : tags) {
+                String name = tag.trim();
+                if (name.isEmpty()) {
+                    continue;
                 }
-            });
-        } catch (InterruptedException | InvocationTargetException e) {
-            throw new Exception("Failed to execute edit function tags on Swing thread: " + e.getMessage(), e);
-        }
 
-        if (error.get() != null) {
-            throw error.get();
-        }
+                if (add) {
+                    function.addTag(name);
+                } else {
+                    function.removeTag(name);
+                }
+            }
+            return null;
+        });
     }
 }

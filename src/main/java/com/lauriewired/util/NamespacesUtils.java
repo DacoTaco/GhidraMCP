@@ -9,6 +9,8 @@ import ghidra.program.model.listing.GhidraClass;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.Namespace;
 import ghidra.program.model.symbol.SourceType;
+import ghidra.program.model.symbol.Symbol;
+import ghidra.program.model.symbol.SymbolTable;
 import ghidra.program.model.symbol.SymbolType;
 
 /**
@@ -113,5 +115,29 @@ public final class NamespacesUtils {
         }
 
         function.getSymbol().setNameAndNamespace(newName.trim(), namespace, SourceType.USER_DEFINED);
+    }
+
+    /**
+     * Finds a class in the global namespace or in the given parent namespace.
+     *
+     * @throws IllegalArgumentException when the parent namespace or the class
+     * does not exist
+     */
+    public static GhidraClass FindClass(Program program, String parentNamespace, String className) {
+        SymbolTable symbolTable = program.getSymbolTable();
+        Namespace parent = program.getGlobalNamespace();
+        if (parentNamespace != null && !parentNamespace.isEmpty()) {
+            parent = symbolTable.getNamespace(parentNamespace, program.getGlobalNamespace());
+            if (parent == null) {
+                throw new IllegalArgumentException("Parent namespace '" + parentNamespace + "' not found");
+            }
+        }
+
+        for (Symbol symbol : symbolTable.getSymbols(className, parent)) {
+            if (symbol.getSymbolType() == SymbolType.CLASS) {
+                return (GhidraClass) symbol.getObject();
+            }
+        }
+        throw new IllegalArgumentException("Class '" + className + "' not found in namespace " + parent.getName());
     }
 }

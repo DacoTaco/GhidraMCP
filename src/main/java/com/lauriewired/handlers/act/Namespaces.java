@@ -1,10 +1,5 @@
 package com.lauriewired.handlers.act;
 
-import java.lang.reflect.InvocationTargetException;
-import java.util.concurrent.atomic.AtomicReference;
-
-import javax.swing.SwingUtilities;
-
 import org.eclipse.jetty.http.HttpMethod;
 
 import com.lauriewired.endpoints.Param;
@@ -12,12 +7,12 @@ import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
 import com.lauriewired.mcp.McpTool;
 import com.lauriewired.util.NamespacesUtils;
+import com.lauriewired.util.GhidraUtils;
 
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.Namespace;
 import ghidra.program.model.symbol.SourceType;
-import ghidra.util.Msg;
 
 /**
  * Handler for editing namespaces and classes.
@@ -61,29 +56,9 @@ public final class Namespaces extends Handler {
             throw new IllegalArgumentException("Namespace '" + oldPath + "' not found");
         }
 
-        // a Runnable can't throw checked exceptions, so the error is carried out of the Swing thread
-        final AtomicReference<Exception> error = new AtomicReference<>();
-        try {
-            SwingUtilities.invokeAndWait(() -> {
-                int tx = program.startTransaction("Rename namespace");
-                boolean success = false;
-                try {
-                    namespace.getSymbol().setName(newName.trim(), SourceType.USER_DEFINED);
-                    success = true;
-                } catch (Exception e) {
-                    Msg.error(this, "Rename namespace error", e);
-                    error.set(e);
-                } finally {
-                    program.endTransaction(tx, success);
-                }
-            });
-        } catch (InterruptedException | InvocationTargetException e) {
-            Msg.error(this, "Failed to execute rename namespace on Swing thread", e);
-            throw new Exception("Failed to execute rename namespace on Swing thread: " + e.getMessage(), e);
-        }
-
-        if (error.get() != null) {
-            throw error.get();
-        }
+        GhidraUtils.RunTransaction(program, "Rename namespace", () -> {
+            namespace.getSymbol().setName(newName.trim(), SourceType.USER_DEFINED);
+            return null;
+        });
     }
 }

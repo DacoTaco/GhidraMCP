@@ -1,16 +1,12 @@
 package com.lauriewired.handlers.set;
 
-import java.lang.reflect.InvocationTargetException;
-import java.util.concurrent.atomic.AtomicReference;
-
-import javax.swing.SwingUtilities;
-
 import org.eclipse.jetty.http.HttpMethod;
 
 import com.lauriewired.endpoints.Param;
 import com.lauriewired.handlers.Handler;
 import com.lauriewired.http.HttpRoute;
 import com.lauriewired.mcp.McpTool;
+import com.lauriewired.util.GhidraUtils;
 
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.data.CategoryPath;
@@ -45,42 +41,24 @@ public final class ClearStruct extends Handler {
     @McpTool(name = "clear_struct", description = "Remove all members from a structure.")
 	public String clearStruct(@Param(name = "program", description="optional program name to work with. normally kept empty to select active program.", nullable = true) String programName, 
 							  @Param(name = "struct_name", description = "The name of the structure to clear.") String structName, 
-							  @Param(name = "category", nullable = true, description = "The category path for the structure. Defaults to root.") String category){
+							  @Param(name = "category", nullable = true, description = "The category path for the structure. Defaults to root.") String category) throws Exception {
 		Program program = getProgramByName(programName);
 		if (program == null)
-			return "No program loaded";
+			throw new Exception("No program loaded");
 
-		final AtomicReference<String> result = new AtomicReference<>();
-		try {
-			SwingUtilities.invokeAndWait(() -> {
-				int txId = program.startTransaction("Clear Struct");
-				boolean success = false;
-				try {
-					DataTypeManager dtm = program.getDataTypeManager();
-					CategoryPath path = new CategoryPath(category == null ? "/" : category);
-					DataType dt = dtm.getDataType(path, structName);
-					if (dt == null || !(dt instanceof Structure)) {
-						result.set("Error: Struct " + structName + " not found in category " + path);
-						return;
-					}
-					Structure struct = (Structure) dt;
-					if (struct.isNotYetDefined()) {
-						result.set("Struct " + structName + " is empty, nothing to clear.");
-						success = true; // Not an error state
-						return;
-					}
-					struct.deleteAll();
-					result.set("Struct " + structName + " cleared.");
-					success = true;
-				} catch (Exception e) {
-					result.set("Error: Failed to clear struct: " + e.getMessage());
-				} finally {
-					program.endTransaction(txId, success);
-				}
-			});
-		} catch (InterruptedException | InvocationTargetException e) {
-			return "Error: Failed to execute clear struct on Swing thread: " + e.getMessage();
-		}
-		return result.get();
+		return GhidraUtils.RunTransaction(program, "Clear Struct", () -> {
+			DataTypeManager dtm = program.getDataTypeManager();
+			CategoryPath path = new CategoryPath(category == null ? "/" : category);
+			DataType dt = dtm.getDataType(path, structName);
+			if (dt == null || !(dt instanceof Structure)) {
+				throw new IllegalArgumentException("Struct " + structName + " not found in category " + path);
+			}
+			Structure struct = (Structure) dt;
+			if (struct.isNotYetDefined()) {
+				return "Struct " + structName + " is empty, nothing to clear.";
+			}
+			struct.deleteAll();
+			return "Struct " + structName + " cleared.";
+		});
 	}
 }

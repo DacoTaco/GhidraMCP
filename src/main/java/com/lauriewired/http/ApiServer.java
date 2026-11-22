@@ -60,7 +60,7 @@ public class ApiServer extends HttpServlet {
         resp.setContentType("application/json");
         resp.getWriter().write(gson.toJson(result));
     }
-    
+
     @Override
     protected void service(HttpServletRequest req, HttpServletResponse resp) throws IOException {
 
@@ -68,8 +68,9 @@ public class ApiServer extends HttpServlet {
         ServerEndpoint match = null;
 
         for (ServerEndpoint ep : endpoints) {
-            if (ep.httpMethod != HttpMethod.fromString(req.getMethod()) || !ep.path.equals(path))
+            if (ep.httpMethod != HttpMethod.fromString(req.getMethod()) || !ep.path.equals(path)) {
                 continue;
+            }
 
             match = ep;
             break;
@@ -87,7 +88,14 @@ public class ApiServer extends HttpServlet {
 
         } catch (InvocationTargetException e) {
             Throwable cause = e.getCause();
-            resp.setStatus(cause instanceof IllegalArgumentException ? 400 : 500);
+            resp.setStatus(switch (cause) {
+                case IllegalArgumentException ignored ->
+                    400;
+                case IllegalStateException ignored ->
+                    503; // e.g. program busy, retry
+                default ->
+                    500;
+            });
             resp.getWriter().write("Error: " + cause.getMessage());
 
         } catch (IllegalArgumentException e) {

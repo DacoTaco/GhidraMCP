@@ -1,11 +1,7 @@
 package com.lauriewired.handlers.act;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.StreamSupport;
-
-import javax.swing.SwingUtilities;
 
 import org.eclipse.jetty.http.HttpMethod;
 
@@ -15,6 +11,7 @@ import com.lauriewired.http.HttpRoute;
 import com.lauriewired.mcp.McpTool;
 import com.lauriewired.util.AddressUtils;
 import com.lauriewired.util.NamespacesUtils;
+import com.lauriewired.util.GhidraUtils;
 
 import ghidra.app.cmd.disassemble.DisassembleCommand;
 import ghidra.app.cmd.function.CreateFunctionCmd;
@@ -69,42 +66,24 @@ public final class Functions extends Handler {
             throw new IllegalArgumentException(entry + " is already part of function " + existing.getName(true));
         }
 
-        // a Runnable can't throw checked exceptions, so the error is carried out of the Swing thread
-        final AtomicReference<Exception> error = new AtomicReference<>();
-        try {
-            SwingUtilities.invokeAndWait(() -> {
-                int tx = program.startTransaction("Create function");
-                boolean success = false;
-                try {
-                    if (program.getListing().getInstructionAt(entry) == null) {
-                        DisassembleCommand disassemble = new DisassembleCommand(entry, null, true);
-                        if (!disassemble.applyTo(program, TaskMonitor.DUMMY) || program.getListing().getInstructionAt(entry) == null) {
-                            throw new Exception("Could not disassemble " + entry + ": " + disassemble.getStatusMsg());
-                        }
-                    }
-
-                    CreateFunctionCmd create = new CreateFunctionCmd(entry);
-                    if (!create.applyTo(program, TaskMonitor.DUMMY)) {
-                        throw new Exception("Could not create function at " + entry + ": " + create.getStatusMsg());
-                    }
-
-                    if (name != null && !name.isBlank()) {
-                        NamespacesUtils.MoveFunction(program, program.getFunctionManager().getFunctionAt(entry), namespacePath, name, false);
-                    }
-                    success = true;
-                } catch (Exception e) {
-                    error.set(e);
-                } finally {
-                    program.endTransaction(tx, success);
+        GhidraUtils.RunTransaction(program, "Create function", () -> {
+            if (program.getListing().getInstructionAt(entry) == null) {
+                DisassembleCommand disassemble = new DisassembleCommand(entry, null, true);
+                if (!disassemble.applyTo(program, TaskMonitor.DUMMY) || program.getListing().getInstructionAt(entry) == null) {
+                    throw new Exception("Could not disassemble " + entry + ": " + disassemble.getStatusMsg());
                 }
-            });
-        } catch (InterruptedException | InvocationTargetException e) {
-            throw new Exception("Failed to execute create function on Swing thread: " + e.getMessage(), e);
-        }
+            }
 
-        if (error.get() != null) {
-            throw error.get();
-        }
+            CreateFunctionCmd create = new CreateFunctionCmd(entry);
+            if (!create.applyTo(program, TaskMonitor.DUMMY)) {
+                throw new Exception("Could not create function at " + entry + ": " + create.getStatusMsg());
+            }
+
+            if (name != null && !name.isBlank()) {
+                NamespacesUtils.MoveFunction(program, program.getFunctionManager().getFunctionAt(entry), namespacePath, name, false);
+            }
+            return null;
+        });
     }
 
     /**
@@ -128,23 +107,12 @@ public final class Functions extends Handler {
             throw new IllegalArgumentException("No function starts at " + entry);
         }
 
-        try {
-            SwingUtilities.invokeAndWait(() -> {
-                int tx = program.startTransaction("Delete function");
-                boolean success = false;
-                try {
-                    success = program.getFunctionManager().removeFunction(entry);
-                } finally {
-                    program.endTransaction(tx, success);
-                }
-            });
-        } catch (InterruptedException | InvocationTargetException e) {
-            throw new Exception("Failed to execute delete function on Swing thread: " + e.getMessage(), e);
-        }
-
-        if (program.getFunctionManager().getFunctionAt(entry) != null) {
-            throw new Exception("Could not delete the function at " + entry);
-        }
+        GhidraUtils.RunTransaction(program, "Delete function", () -> {
+            if (!program.getFunctionManager().removeFunction(entry)) {
+                throw new Exception("Could not delete the function at " + entry);
+            }
+            return null;
+        });
     }
 
     /**
@@ -221,26 +189,13 @@ public final class Functions extends Handler {
 
         //copy over so its usable in the transaction lambda
         final Function function = func;
-        final AtomicReference<Exception> error = new AtomicReference<>();
-        try {
-            SwingUtilities.invokeAndWait(() -> {
-                int tx = program.startTransaction("Rename function");
-                boolean success = false;
-                try {
-                    NamespacesUtils.MoveFunction(program, function, namespacePath, newName, Optional.ofNullable(asClass).orElse(false));
-                    success = true;
-                } catch (Exception e) {
-                    error.set(new Exception("Rename failed: " + e.getMessage(), e));
-                } finally {
-                    program.endTransaction(tx, success);
-                }
-            });
-        } catch (InterruptedException | InvocationTargetException e) {
-            throw new Exception("Failed to execute rename on Swing thread: " + e.getMessage(), e);
-        }
-
-        if (error.get() != null) {
-            throw error.get();
-        }
+        GhidraUtils.RunTransaction(program, "Rename function", () -> {
+            try {
+                NamespacesUtils.MoveFunction(program, function, namespacePath, newName, Optional.ofNullable(asClass).orElse(false));
+            } catch (Exception e) {
+                throw new Exception("Rename failed: " + e.getMessage(), e);
+            }
+            return null;
+        });
     }
 }
