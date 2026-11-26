@@ -61,6 +61,15 @@ public final class FunctionTags extends Handler {
                 }
 
                 if (add) {
+                    boolean exists = function
+                            .getTags()
+                            .stream()
+                            .anyMatch(existing -> existing.getName().equalsIgnoreCase(name));
+
+                    if (exists) {
+                        throw new IllegalArgumentException("Function already has tag: " + name);
+                    }
+
                     function.addTag(name);
                 } else {
                     function.removeTag(name);
